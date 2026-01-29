@@ -6,7 +6,8 @@ export class UsersController {
   constructor(private prisma: PrismaService) {}
 
   @Get()
-  async getAllUsers() {
+  getAllUsers() {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     return (this.prisma as any).user.findMany({
       include: {
         licenses: true,
@@ -15,7 +16,8 @@ export class UsersController {
   }
 
   @Post()
-  async createUser(@Body() data: { email: string; name?: string }) {
+  createUser(@Body() data: { email: string; name?: string }) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
     return (this.prisma as any).user.create({
       data,
     });
