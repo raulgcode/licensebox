@@ -4,17 +4,26 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "setup": "node scripts/setup.js",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run start",
     "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "test": "turbo run test",
-    "typecheck": "turbo run typecheck"
+    "typecheck": "turbo run typecheck",
+    "db:studio": "pnpm --filter database db:studio",
+    "db:migrate": "pnpm --filter database db:migrate",
+    "db:generate": "pnpm --filter database db:generate"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
+  "deprettier": "^3.4.2",
+  "vDependencies": {
+    "turbo": "^2.8.0"
+  },
   "devDependencies": {
     "turbo": "^2.8.0"
   }

@@ -33,6 +33,7 @@ lerna-debug.log*
 # IDE
 .vscode/*
 !.vscode/extensions.json
+!.vscode/settings.json
 .idea
 .DS_Store
 *.suo
@@ -49,3 +50,9 @@ Thumbs.db
 .turbo
 *.tsbuildinfo
 .cache
+
+# Docker
+docker-compose.override.yml
+
+# Database
+postgres_data
