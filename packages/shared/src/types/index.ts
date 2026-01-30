@@ -14,13 +14,13 @@ export interface License {
   key: string;
   userId: string;
   productId: string;
-  status: "active" | "expired" | "revoked";
+  status: 'active' | 'expired' | 'revoked';
   expiresAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: {
@@ -28,3 +28,6 @@ export interface ApiResponse<T = any> {
     code?: string;
   };
 }
+
+// Export auth types
+export * from './auth.types';

@@ -63,20 +63,36 @@ function checkDocker() {
 function setupEnvironmentFiles() {
   log('\n📝 Setting up environment files...', colors.blue);
 
-  // API .env file
-  const apiEnvPath = join(process.cwd(), 'apps', 'api', '.env');
-  const apiEnvExamplePath = join(process.cwd(), 'apps', 'api', '.env.example');
+  // Root .env file (centralized configuration)
+  const rootEnvPath = join(process.cwd(), '.env');
+  const rootEnvExamplePath = join(process.cwd(), '.env.example');
 
-  if (!existsSync(apiEnvPath)) {
-    const apiEnvContent = `DATABASE_URL="postgresql://licensebox:licensebox_dev@localhost:5432/licensebox_db"
+  if (!existsSync(rootEnvPath)) {
+    if (existsSync(rootEnvExamplePath)) {
+      copyFileSync(rootEnvExamplePath, rootEnvPath);
+      log('✅ Created root .env file from .env.example', colors.green);
+    } else {
+      // Fallback: create .env with default values
+      const defaultEnvContent = `# Database Configuration
+DATABASE_URL="postgresql://licensebox:licensebox_dev@localhost:5432/licensebox_db"
+
+# API Configuration
 PORT=3000
 NODE_ENV=development
+
+# JWT Configuration
+JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
+JWT_EXPIRES_IN="7d"
+
+# Admin User Configuration
+ADMIN_EMAIL="admin@licensebox.com"
+ADMIN_PASSWORD="change-this-secure-admin-password"
 `;
-    writeFileSync(apiEnvPath, apiEnvContent);
-    writeFileSync(apiEnvExamplePath, apiEnvContent);
-    log('✅ Created API .env file', colors.green);
+      writeFileSync(rootEnvPath, defaultEnvContent);
+      log('✅ Created root .env file with default values', colors.green);
+    }
   } else {
-    log('⚠️  API .env file already exists, skipping...', colors.yellow);
+    log('⚠️  Root .env file already exists, skipping...', colors.yellow);
   }
 
   // Web .env file

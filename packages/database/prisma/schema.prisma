@@ -14,7 +14,9 @@ datasource db {
 model User {
   id        String    @id @default(uuid())
   email     String    @unique
+  password  String // hashed password
   name      String?
+  isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   licenses  License[]

@@ -105,6 +105,32 @@ After running `pnpm run dev`:
 - **Backend API:** http://localhost:3000
 - **Prisma Studio:** Run `pnpm run db:studio`, then visit http://localhost:5555
 
+## ⚙️ Environment Variables
+
+This monorepo uses a **centralized `.env` file** at the project root. This eliminates circular dependencies and provides a single source of truth for configuration.
+
+**Location:** `.env` (project root)
+
+**Required variables:**
+
+```env
+DATABASE_URL="postgresql://licensebox:licensebox_dev@localhost:5432/licensebox_db"
+PORT=3000
+NODE_ENV=development
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRES_IN=7d
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=YourSecurePasswordHere
+```
+
+Copy `.env.example` to `.env` and customize as needed:
+
+```bash
+cp .env.example .env
+```
+
+**Note:** All database commands automatically load environment variables from the root `.env` file.
+
 ## 🗄️ Database
 
 ### Connection Details
@@ -198,6 +224,25 @@ pnpm run test:cov       # Coverage report
 ```bash
 pnpm run build
 ```
+
+**For production deployment:** See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions on:
+
+- Using system environment variables (no `.env` file needed)
+- Docker containerization
+- Cloud platform deployment (AWS, Heroku, Kubernetes, etc.)
+- Production database migrations
+- Security best practices
+
+## 🚀 Deployment
+
+This application supports both development and production environments:
+
+- **Development:** Uses `.env` file at project root
+- **Production:** Uses system environment variables (Docker, Kubernetes, cloud platforms)
+
+The application automatically detects the environment and loads configuration accordingly.
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions.
 
 ## 🤝 Contributing
 

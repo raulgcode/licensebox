@@ -16,7 +16,7 @@ That's it! 🎉
 The `pnpm run setup` command automatically:
 
 1. ✅ Checks if Docker is installed
-2. ✅ Creates environment files (`.env`)
+2. ✅ Creates environment file (`.env` at project root)
 3. ✅ Installs all project dependencies
 4. ✅ Starts PostgreSQL database in Docker
 5. ✅ Sets up the database schema with Prisma
@@ -39,7 +39,7 @@ After running `pnpm run setup`:
   - Password: `licensebox_dev`
   - Database: `licensebox_db`
 - 📊 Prisma schema with example models (User, License)
-- 🔧 Environment files configured for both API and Web
+- 🔧 Environment file (`.env`) at project root configured with all required variables
 
 ## Available Commands
 
@@ -71,11 +71,10 @@ pnpm --filter database db:seed       # Seed with sample data
 
 ```
 licensebox/
+├── .env                        # Environment variables (project root)
 ├── apps/
 │   ├── api/                    # NestJS backend
-│   │   └── .env               # API environment variables
 │   └── web/                    # React frontend
-│       └── .env                # Web environment variables
 ├── packages/
 │   └── database/               # Shared database package
 │       └── prisma/
@@ -84,6 +83,8 @@ licensebox/
 └── scripts/
     └── setup.js                # Automated setup script
 ```
+
+**Note:** All environment variables are centralized in the root `.env` file, eliminating circular dependencies between packages.
 
 ## Troubleshooting
 
@@ -129,10 +130,11 @@ After running `pnpm run dev`:
 
 ## Next Steps
 
-1. Customize the Prisma schema in `apps/api/prisma/schema.prisma`
-2. Run `pnpm --filter api db:migrate` after schema changes
-3. Start building your license management system!
+1. Copy `.env.example` to `.env` at the project root and customize if needed
+2. Customize the Prisma schema in `packages/database/prisma/schema.prisma`
+3. Run `pnpm --filter database db:migrate` after schema changes
+4. Start building your license management system!
 
 ---
 
-**Note:** The `.env` files are already configured for local development. For production, you'll need to update these with your actual credentials.
+**Note:** The `.env` file at the project root is configured for local development. For production, you'll need to update it with your actual credentials.
