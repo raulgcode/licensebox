@@ -5,9 +5,11 @@
 Prisma mantiene un **historial completo** de todas las migraciones de forma automática:
 
 ### 1. Archivos de Migración (versionados en Git)
+
 **Ubicación:** `packages/database/prisma/migrations/`
 
 Cada migración genera:
+
 ```
 migrations/
 ├── migration_lock.toml          # Lock del provider (PostgreSQL)
@@ -19,24 +21,26 @@ migrations/
 ```
 
 ### 2. Tabla de Control (`_prisma_migrations`)
+
 Prisma crea automáticamente esta tabla en tu base de datos para trackear:
 
-| Campo | Descripción |
-|-------|-------------|
-| `id` | ID único de la migración |
-| `checksum` | Hash del archivo SQL para detectar cambios |
-| `finished_at` | Timestamp de ejecución |
-| `migration_name` | Nombre de la carpeta de migración |
-| `logs` | Logs de ejecución |
-| `rolled_back_at` | Timestamp si fue revertida |
-| `started_at` | Inicio de ejecución |
-| `applied_steps_count` | Número de pasos aplicados |
+| Campo                 | Descripción                                |
+| --------------------- | ------------------------------------------ |
+| `id`                  | ID único de la migración                   |
+| `checksum`            | Hash del archivo SQL para detectar cambios |
+| `finished_at`         | Timestamp de ejecución                     |
+| `migration_name`      | Nombre de la carpeta de migración          |
+| `logs`                | Logs de ejecución                          |
+| `rolled_back_at`      | Timestamp si fue revertida                 |
+| `started_at`          | Inicio de ejecución                        |
+| `applied_steps_count` | Número de pasos aplicados                  |
 
 ## 🔧 Comandos Disponibles
 
 ### Desarrollo
 
 #### Crear Nueva Migración (automático)
+
 ```bash
 # 1. Edita el schema.prisma
 # 2. Ejecuta:
@@ -51,6 +55,7 @@ pnpm --filter database db:migrate --name nombre_descriptivo
 ```
 
 #### Crear Migración Sin Aplicar
+
 ```bash
 pnpm --filter database db:migrate:create --name nombre_descriptivo
 
@@ -61,6 +66,7 @@ pnpm --filter database db:migrate:create --name nombre_descriptivo
 ```
 
 #### Ver Estado de Migraciones
+
 ```bash
 pnpm --filter database db:migrate:status
 
@@ -72,6 +78,7 @@ pnpm --filter database db:migrate:status
 ```
 
 #### Ver Historial
+
 ```bash
 pnpm --filter database db:migrate:history
 
@@ -79,6 +86,7 @@ pnpm --filter database db:migrate:history
 ```
 
 #### Reset Completo (⚠️ Peligroso)
+
 ```bash
 pnpm --filter database db:reset
 
@@ -87,13 +95,14 @@ pnpm --filter database db:reset
 # - Recrea desde cero
 # - Aplica todas las migraciones
 # - Ejecuta seeds
-# 
+#
 # ⚠️ Solo en desarrollo!
 ```
 
 ### Producción
 
 #### Aplicar Migraciones Pendientes
+
 ```bash
 pnpm --filter database db:migrate:deploy
 
@@ -235,17 +244,20 @@ steps:
 ## 🔍 Comandos de Inspección
 
 ### Ver SQL de una Migración
+
 ```bash
 cat packages/database/prisma/migrations/[timestamp]_[name]/migration.sql
 ```
 
 ### Ver Todas las Migraciones en la DB
+
 ```sql
 -- Conectarse a la DB y ejecutar:
 SELECT * FROM "_prisma_migrations" ORDER BY "started_at" DESC;
 ```
 
 ### Verificar Drift (cambios manuales)
+
 ```bash
 pnpm --filter database db:migrate:status
 
@@ -258,12 +270,14 @@ pnpm --filter database db:migrate:status
 ### ✅ DO
 
 1. **Nombres descriptivos** para las migraciones
+
    ```bash
    pnpm db:migrate --name add_user_avatar_field
    # NO: pnpm db:migrate --name update
    ```
 
 2. **Commits atómicos** - una migración por commit
+
    ```bash
    git add prisma/migrations/[timestamp]_add_feature/
    git add prisma/schema.prisma
@@ -271,6 +285,7 @@ pnpm --filter database db:migrate:status
    ```
 
 3. **Review del SQL** generado antes de aplicar en producción
+
    ```bash
    pnpm db:migrate:create --name change
    # Revisar el SQL
@@ -278,6 +293,7 @@ pnpm --filter database db:migrate:status
    ```
 
 4. **Backup** antes de migraciones grandes en producción
+
    ```bash
    pg_dump database > backup_$(date +%Y%m%d).sql
    ```
@@ -315,6 +331,7 @@ pnpm --filter database db:migrate:status
 ## 🐛 Troubleshooting
 
 ### "Migration already applied"
+
 ```bash
 # La migración ya existe en DB pero no localmente
 # Solución: pull del repo
@@ -323,6 +340,7 @@ pnpm --filter database db:migrate:status
 ```
 
 ### "Database schema drift detected"
+
 ```bash
 # La DB tiene cambios manuales
 # Opción 1: Resetear DB (desarrollo)
@@ -333,6 +351,7 @@ pnpm --filter database db:migrate:resolve --applied [migration_name]
 ```
 
 ### "Migration failed"
+
 ```bash
 # Ver logs en _prisma_migrations
 SELECT * FROM "_prisma_migrations" WHERE "finished_at" IS NULL;

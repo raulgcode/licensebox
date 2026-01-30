@@ -61,6 +61,7 @@ pnpm --filter database db:seed           # Seed with admin user
 ```
 
 **Migration tracking:** See [DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md) for complete guide on:
+
 - Creating and tracking migrations
 - Migration history and status
 - Production deployment

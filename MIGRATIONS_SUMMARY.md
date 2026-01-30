@@ -7,7 +7,9 @@ El sistema **ya está completamente configurado** para trackear todas las migrac
 ## 🎯 Cómo Funciona
 
 ### 1️⃣ **Git Tracking** (Control de Versiones)
+
 Todas las migraciones se guardan en:
+
 ```
 packages/database/prisma/migrations/
 ├── 20260130022053_init/
@@ -16,7 +18,9 @@ packages/database/prisma/migrations/
 ```
 
 ### 2️⃣ **Database Tracking** (Tabla `_prisma_migrations`)
+
 Prisma crea automáticamente una tabla que registra:
+
 - ✅ Qué migraciones se ejecutaron
 - ✅ Cuándo se ejecutaron
 - ✅ Si fueron exitosas o fallaron
@@ -25,21 +29,27 @@ Prisma crea automáticamente una tabla que registra:
 ## 🚀 Comandos Esenciales
 
 ### Ver Estado Actual
+
 ```bash
 pnpm --filter database db:migrate:status
 ```
+
 Muestra:
+
 - ✅ Migraciones aplicadas
 - ⏳ Migraciones pendientes
 - 🔄 Estado del schema
 
 ### Crear Nueva Migración
+
 ```bash
 # 1. Edita packages/database/prisma/schema.prisma
 # 2. Ejecuta:
 pnpm --filter database db:migrate --name descripcion_cambio
 ```
+
 Automáticamente:
+
 - ✅ Genera el SQL
 - ✅ Crea carpeta con timestamp
 - ✅ Aplica la migración
@@ -47,6 +57,7 @@ Automáticamente:
 - ✅ Actualiza Prisma Client
 
 ### Ver Historial
+
 ```bash
 pnpm --filter database db:migrate:history
 ```
@@ -54,6 +65,7 @@ pnpm --filter database db:migrate:history
 ## 📚 Documentación Completa
 
 Ver [DATABASE_MIGRATIONS.md](DATABASE_MIGRATIONS.md) para:
+
 - 📖 Guía completa paso a paso
 - 🎯 Ejemplos de escenarios reales
 - 🚀 Deployment en producción
@@ -89,15 +101,15 @@ git commit -m "feat: add user role field"
 
 ## ✨ Características Destacadas
 
-| Feature | Status |
-|---------|--------|
-| **Git versioning** | ✅ Automático |
-| **Database tracking** | ✅ Tabla `_prisma_migrations` |
-| **Rollback support** | ✅ Con `db:migrate:resolve` |
-| **Production safe** | ✅ `db:migrate:deploy` |
-| **Conflict detection** | ✅ Checksum validation |
-| **History log** | ✅ Timestamps completos |
-| **SQL preview** | ✅ Con `--create-only` |
+| Feature                | Status                        |
+| ---------------------- | ----------------------------- |
+| **Git versioning**     | ✅ Automático                 |
+| **Database tracking**  | ✅ Tabla `_prisma_migrations` |
+| **Rollback support**   | ✅ Con `db:migrate:resolve`   |
+| **Production safe**    | ✅ `db:migrate:deploy`        |
+| **Conflict detection** | ✅ Checksum validation        |
+| **History log**        | ✅ Timestamps completos       |
+| **SQL preview**        | ✅ Con `--create-only`        |
 
 ## 🎯 Comandos Agregados
 
