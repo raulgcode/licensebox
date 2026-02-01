@@ -12,25 +12,37 @@ datasource db {
 
 // Example User model
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
+  id        String   @id @default(uuid())
+  email     String   @unique
   password  String // hashed password
   name      String?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  licenses  License[]
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("users")
 }
 
-// Example License model
+// Client model
+model Client {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  licenses    License[]
+
+  @@map("clients")
+}
+
+// License model
 model License {
   id        String    @id @default(uuid())
   key       String    @unique
   product   String
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   expiresAt DateTime?
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
