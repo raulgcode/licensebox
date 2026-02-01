@@ -5,6 +5,8 @@ import { AppService } from './app.service';
 import { PrismaService } from './prisma.service';
 import { UsersController } from './users.controller';
 import { AuthModule } from './auth/auth.module';
+import { LicenseModule } from './license/license.module';
+import { ClientModule } from './client/client.module';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -22,6 +24,8 @@ const envFilePath = existsSync(rootEnvPath) ? rootEnvPath : undefined;
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     AuthModule,
+    LicenseModule,
+    ClientModule,
   ],
   controllers: [AppController, UsersController],
   providers: [AppService, PrismaService],

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { useForm, type UseFormReturn } from '@/hooks/useForm';
 import { ErrorList } from '@/components/errorList';
 import { api } from '@/lib/api';
+import { authCookie } from '../cookies.server';
 import type { LoginResponseDto } from '@licensebox/shared';
 
 const schema = z.object({
@@ -35,14 +36,12 @@ export function LoginForm({ className, fields, form, ...props }: LoginFormProps)
                 <h1 className="text-2xl font-bold">Bienvenido de nuevo</h1>
                 <p className="text-muted-foreground text-balance">Inicia sesión en tu cuenta</p>
               </div>
+              {form.errors && <ErrorList errors={{ form: form.errors }} />}
               <Field>
                 <FieldLabel htmlFor={fields.email.id}>Correo electrónico</FieldLabel>
                 <Input
-                  {...getInputProps(fields.email, {
-                    type: 'email',
-                    placeholder: 'correo@ejemplo.com',
-                  })}
-                  autoComplete="email"
+                  {...getInputProps(fields.email, { type: 'email' })}
+                  placeholder="correo@ejemplo.com"
                 />
                 {fields.email.errors && <ErrorList errors={{ email: fields.email.errors }} />}
               </Field>
@@ -54,7 +53,8 @@ export function LoginForm({ className, fields, form, ...props }: LoginFormProps)
                   </a>
                 </div>
                 <Input
-                  {...getInputProps(fields.password, { type: 'password', placeholder: '********' })}
+                  {...getInputProps(fields.password, { type: 'password' })}
+                  placeholder="********"
                   autoComplete="current-password"
                 />
                 {fields.password.errors && (
@@ -97,13 +97,12 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const { access_token, user } = response.data;
 
-    // Store the token in localStorage for the axios interceptor
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('access_token', access_token);
-    }
-
     // Redirect to home page after successful login
-    return redirect('/');
+    return redirect('/', {
+      headers: {
+        'Set-Cookie': await authCookie.serialize(access_token),
+      },
+    });
   } catch (error) {
     if (error instanceof Error && 'response' in error) {
       const axiosError = error as { response?: { status?: number } };

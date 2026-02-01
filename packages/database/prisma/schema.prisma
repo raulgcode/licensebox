@@ -43,6 +43,7 @@ model License {
   product   String
   clientId  String
   client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  machineId String? // Optional machine identifier for license binding
   expiresAt DateTime?
   isActive  Boolean   @default(true)
   createdAt DateTime  @default(now())
