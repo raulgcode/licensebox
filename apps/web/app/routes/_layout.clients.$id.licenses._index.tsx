@@ -87,7 +87,10 @@ function getExpirationStatus(expiresAt: Date | string | null): {
   return { label: formatDate(expiresAt), className: 'bg-gray-100 text-gray-800', isExpired: false };
 }
 
-function getLicenseCardStyles(license: { isActive: boolean }, isExpired: boolean): {
+function getLicenseCardStyles(
+  license: { isActive: boolean },
+  isExpired: boolean,
+): {
   borderColor: string;
   bgColor: string;
   opacity: string;
