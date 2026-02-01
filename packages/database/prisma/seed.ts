@@ -3,6 +3,7 @@ import * as bcrypt from 'bcrypt';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+import { v4 as uuid } from 'uuid';
 
 // Load environment variables from project root if .env file exists
 // In production, environment variables should be set by the system
@@ -72,31 +73,63 @@ async function main() {
     },
   });
 
-  // Create sample licenses
-  await prisma.license.upsert({
-    where: { key: 'DEMO-1234-5678-ABCD' },
+  console.log('✅ Sample users created:', user1.email, user2.email);
+
+  // Create sample clients
+  const client1Id = uuid();
+  const client1 = await prisma.client.upsert({
+    where: { id: client1Id },
     update: {},
     create: {
-      key: 'DEMO-1234-5678-ABCD',
+      id: client1Id,
+      name: 'EY Corp.',
+      description: 'Leading global professional services',
+      isActive: true,
+    },
+  });
+
+  const client2Id = uuid();
+  const client2 = await prisma.client.upsert({
+    where: { id: client2Id },
+    update: {},
+    create: {
+      id: client2Id,
+      name: 'TechStart Inc.',
+      description: 'Innovative startup solutions',
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Sample clients created:', client1.name, client2.name);
+
+  // Create sample licenses
+  const key1 = uuid();
+  await prisma.license.upsert({
+    where: { key: key1 },
+    update: {},
+    create: {
+      key: key1,
       product: 'Professional Plan',
-      userId: user1.id,
+      clientId: client1.id,
       isActive: true,
       expiresAt: new Date('2026-12-31'),
     },
   });
 
+  const key2 = uuid();
   await prisma.license.upsert({
-    where: { key: 'DEMO-9876-5432-WXYZ' },
+    where: { key: key2 },
     update: {},
     create: {
-      key: 'DEMO-9876-5432-WXYZ',
+      key: key2,
       product: 'Enterprise Plan',
-      userId: user2.id,
+      clientId: client2.id,
       isActive: true,
       expiresAt: new Date('2027-06-30'),
     },
   });
 
+  console.log('✅ Sample licenses created!');
   console.log('✅ Seeding completed!');
 }
 
