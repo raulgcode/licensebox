@@ -29,5 +29,6 @@
   },
   "prisma.showPrismaDataPlatformNotification": false,
   "prisma.schemaPath": "packages/database/prisma/schema.prisma",
-  "prisma.pinToPrisma6": true
+  "prisma.pinToPrisma6": true,
+  "editor.tabSize": 2
 }
