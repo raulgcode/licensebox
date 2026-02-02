@@ -31,3 +31,9 @@ export interface ApiResponse<T = unknown> {
 
 // Export auth types
 export * from './auth.types';
+
+// Export license types
+export * from './license.types';
+
+// Export client types
+export * from './client.types';

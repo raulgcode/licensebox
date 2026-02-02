@@ -22,3 +22,13 @@ export interface JwtPayload {
   iat?: number;
   exp?: number;
 }
+
+/**
+ * Authenticated user data available in middleware context
+ */
+export interface AuthenticatedUser {
+  id: string;
+  email: string;
+  name: string | null;
+  isActive: boolean;
+}
