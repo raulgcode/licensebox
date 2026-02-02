@@ -303,39 +303,3 @@ jobs:
         run: flyctl deploy -c fly.web.toml --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
-  # ==========================================
-  # Summary
-  # ==========================================
-  summary:
-    name: Pipeline Summary
-    runs-on: ubuntu-latest
-    needs:
-      [
-        detect-changes,
-        build-test,
-        release-database,
-        release-api,
-        release-web,
-        deploy-api,
-        deploy-web,
-      ]
-    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - name: Summary
-        run: |
-          echo "## 📊 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Changes Detected" >> $GITHUB_STEP_SUMMARY
-          echo "- API: ${{ needs.detect-changes.outputs.api }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Web: ${{ needs.detect-changes.outputs.web }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Database: ${{ needs.detect-changes.outputs.database }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Releases" >> $GITHUB_STEP_SUMMARY
-          echo "- Database: ${{ needs.release-database.outputs.new-release == 'true' && needs.release-database.outputs.version || 'No new release' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- API: ${{ needs.release-api.outputs.new-release == 'true' && needs.release-api.outputs.version || 'No new release' }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Web: ${{ needs.release-web.outputs.new-release == 'true' && needs.release-web.outputs.version || 'No new release' }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Deployments" >> $GITHUB_STEP_SUMMARY
-          echo "- API Deploy: ${{ needs.deploy-api.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Web Deploy: ${{ needs.deploy-web.result }}" >> $GITHUB_STEP_SUMMARY
