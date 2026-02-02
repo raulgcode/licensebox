@@ -160,8 +160,9 @@ Cada componente tiene su propio archivo `.releaserc.json`:
 
 ```json
 {
-  "tagFormat": "api-v${version}", // Tag único por componente
+  "tagFormat": "api-v${version}",
   "branches": ["main"],
+  "extends": "semantic-release-monorepo",
   "plugins": [
     "@semantic-release/commit-analyzer",
     "@semantic-release/release-notes-generator",
@@ -171,6 +172,8 @@ Cada componente tiene su propio archivo `.releaserc.json`:
   ]
 }
 ```
+
+> **Nota**: `semantic-release-monorepo` filtra los commits para que cada paquete solo analice los commits que afectan a su directorio.
 
 ## 🏷️ Versionado
 

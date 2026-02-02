@@ -2,6 +2,7 @@
   "name": "api",
   "tagFormat": "api-v${version}",
   "branches": ["main"],
+  "extends": "semantic-release-monorepo",
   "plugins": [
     [
       "@semantic-release/commit-analyzer",

@@ -2,6 +2,7 @@
   "name": "database",
   "tagFormat": "database-v${version}",
   "branches": ["main"],
+  "extends": "semantic-release-monorepo",
   "plugins": [
     [
       "@semantic-release/commit-analyzer",

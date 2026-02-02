@@ -96,8 +96,10 @@ jobs:
           working_directory: apps/api
           dry_run: true
           extra_plugins: |
+            semantic-release-monorepo
             @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
+            conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -155,8 +157,10 @@ jobs:
           working_directory: apps/web
           dry_run: true
           extra_plugins: |
+            semantic-release-monorepo
             @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
+            conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -209,11 +213,13 @@ jobs:
         with:
           working_directory: apps/api
           extra_plugins: |
+            semantic-release-monorepo
             @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
             @semantic-release/changelog
             @semantic-release/git
             @semantic-release/github
+            conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -268,11 +274,13 @@ jobs:
         with:
           working_directory: apps/web
           extra_plugins: |
+            semantic-release-monorepo
             @semantic-release/commit-analyzer
             @semantic-release/release-notes-generator
             @semantic-release/changelog
             @semantic-release/git
             @semantic-release/github
+            conventional-changelog-conventionalcommits
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -22,11 +22,15 @@
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
-  "deprettier": "^3.4.2",
-  "vDependencies": {
-    "turbo": "^2.8.0"
-  },
   "devDependencies": {
-    "turbo": "^2.8.0"
+    "turbo": "^2.8.0",
+    "semantic-release": "^24.2.0",
+    "semantic-release-monorepo": "^8.0.2",
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/commit-analyzer": "^13.0.0",
+    "@semantic-release/git": "^10.0.1",
+    "@semantic-release/github": "^11.0.0",
+    "@semantic-release/release-notes-generator": "^14.0.0",
+    "conventional-changelog-conventionalcommits": "^8.0.0"
   }
 }
