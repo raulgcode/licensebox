@@ -47,11 +47,11 @@ El pipeline principal se ejecuta automáticamente en cada push a `main` y en pul
 
 El pipeline usa `dorny/paths-filter` para detectar cambios:
 
-| Componente | Se activa cuando cambia... |
-|------------|---------------------------|
+| Componente | Se activa cuando cambia...                                  |
+| ---------- | ----------------------------------------------------------- |
 | API        | `apps/api/**`, `packages/database/**`, `packages/shared/**` |
-| Web        | `apps/web/**`, `packages/shared/**` |
-| Database   | `packages/database/**` |
+| Web        | `apps/web/**`, `packages/shared/**`                         |
+| Database   | `packages/database/**`                                      |
 
 ### Semantic Release
 
@@ -82,9 +82,9 @@ Permite hacer deploy manual desde GitHub Actions.
 
 ### Opciones
 
-| Opción | Descripción |
-|--------|-------------|
-| `target` | Selecciona qué desplegar: `api`, `web`, o `both` |
+| Opción                  | Descripción                                                         |
+| ----------------------- | ------------------------------------------------------------------- |
+| `target`                | Selecciona qué desplegar: `api`, `web`, o `both`                    |
 | `skip_semantic_release` | Si es `true`, fuerza el deploy sin verificar si hay nuevos releases |
 
 ### Cómo usar
@@ -122,8 +122,8 @@ Permite hacer deploy manual desde GitHub Actions.
 
 Configura los siguientes secrets en tu repositorio:
 
-| Secret | Descripción |
-|--------|-------------|
+| Secret          | Descripción                      |
+| --------------- | -------------------------------- |
 | `FLY_API_TOKEN` | Token de autenticación de Fly.io |
 
 ### Obtener FLY_API_TOKEN
@@ -160,7 +160,7 @@ Cada componente tiene su propio archivo `.releaserc.json`:
 
 ```json
 {
-  "tagFormat": "api-v${version}",  // Tag único por componente
+  "tagFormat": "api-v${version}", // Tag único por componente
   "branches": ["main"],
   "plugins": [
     "@semantic-release/commit-analyzer",
@@ -176,10 +176,10 @@ Cada componente tiene su propio archivo `.releaserc.json`:
 
 El proyecto usa [Conventional Commits](https://www.conventionalcommits.org/) para determinar automáticamente las versiones:
 
-| Tipo de Commit | Versión |
-|----------------|---------|
+| Tipo de Commit               | Versión       |
+| ---------------------------- | ------------- |
 | `fix:`, `perf:`, `refactor:` | Patch (0.0.X) |
-| `feat:` | Minor (0.X.0) |
+| `feat:`                      | Minor (0.X.0) |
 | `feat!:` o `BREAKING CHANGE` | Major (X.0.0) |
 
 ### Scopes Recomendados
