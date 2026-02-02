@@ -244,6 +244,97 @@ The application automatically detects the environment and loads configuration ac
 
 See [DEPLOYMENT.md](DEPLOYMENT.md) for complete deployment instructions.
 
+## 🚀 Deploying to Fly.io
+
+This project is configured to deploy to [Fly.io](https://fly.io). Follow these steps to deploy the API and Web applications.
+
+### Prerequisites
+
+1. **Install Fly.io CLI**
+
+   Download and install the Fly.io CLI from: https://fly.io/docs/flyctl/install/
+
+   **macOS (Homebrew):**
+
+   ```bash
+   brew install flyctl
+   ```
+
+   **Linux:**
+
+   ```bash
+   curl -L https://fly.io/install.sh | sh
+   ```
+
+   **Windows (PowerShell):**
+
+   ```powershell
+   pwsh -Command "iwr https://fly.io/install.ps1 -useb | iex"
+   ```
+
+2. **Authenticate with Fly.io**
+
+   ```bash
+   fly auth login
+   ```
+
+3. **Create a Fly.io API Token** (for CI/CD)
+   ```bash
+   fly tokens create deploy -x 999999h
+   ```
+   Save this token as `FLY_API_TOKEN` secret in your GitHub repository.
+
+### Manual Deployment
+
+**Deploy API:**
+
+```bash
+fly deploy -c fly.api.toml
+```
+
+**Deploy Web:**
+
+```bash
+fly deploy -c fly.web.toml
+```
+
+**Deploy Both:**
+
+```bash
+fly deploy -c fly.api.toml && fly deploy -c fly.web.toml
+```
+
+### Environment Variables
+
+Before deploying, set the required secrets in Fly.io:
+
+```bash
+# API secrets
+fly secrets set DATABASE_URL="your-production-database-url" -a licensebox-api
+fly secrets set JWT_SECRET="your-jwt-secret" -a licensebox-api
+fly secrets set ADMIN_EMAIL="admin@example.com" -a licensebox-api
+fly secrets set ADMIN_PASSWORD="your-secure-password" -a licensebox-api
+
+# Web secrets (if needed)
+fly secrets set API_URL="https://licensebox-api.fly.dev" -a licensebox-web
+```
+
+### Production URLs
+
+After deployment:
+
+- **API:** https://licensebox-api.fly.dev
+- **Web:** https://licensebox-web.fly.dev
+
+### CI/CD Automated Deployment
+
+This project includes GitHub Actions workflows for automated deployment:
+
+- **Automatic:** Push to `main` branch triggers semantic-release and deploys if there are new releases
+- **Manual:** Use the "Manual Deploy" workflow in GitHub Actions to deploy on-demand
+
+See [CI_CD.md](CI_CD.md) for detailed CI/CD documentation.
+
 ## 🤝 Contributing
 
 1. Fork the repository
