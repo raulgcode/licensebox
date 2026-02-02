@@ -1,4 +1,10 @@
-import { Form, redirect, useActionData, type ActionFunctionArgs } from 'react-router';
+import {
+  Form,
+  redirect,
+  useActionData,
+  useNavigation,
+  type ActionFunctionArgs,
+} from 'react-router';
 import { getFormProps, getInputProps } from '@conform-to/react';
 import { parseWithZod } from '@conform-to/zod';
 import { z } from 'zod';
@@ -23,9 +29,10 @@ const schema = z.object({
 type LoginFormProps = {
   form: UseFormReturn<typeof schema>[0];
   fields: UseFormReturn<typeof schema>[1];
+  navigation: ReturnType<typeof useNavigation>;
 } & React.ComponentProps<'div'>;
 
-export function LoginForm({ className, fields, form, ...props }: LoginFormProps) {
+export function LoginForm({ className, fields, form, navigation, ...props }: LoginFormProps) {
   return (
     <div className={cn('flex flex-col gap-6', className)} {...props}>
       <Card className="overflow-hidden border-0 shadow-2xl">
@@ -87,13 +94,16 @@ export function LoginForm({ className, fields, form, ...props }: LoginFormProps)
                 <Button
                   type="submit"
                   className="w-full h-11 text-base font-semibold shadow-lg hover:shadow-xl transition-all"
+                  disabled={navigation.state === 'submitting' || navigation.state === 'loading'}
                 >
-                  Iniciar sesión
+                  {navigation.state === 'submitting' && 'Autenticando...'}
+                  {navigation.state === 'idle' && 'Iniciar sesión'}
+                  {navigation.state === 'loading' && 'Cargando...'}
                 </Button>
               </Field>
             </FieldGroup>
           </Form>
-          <div className="relative hidden md:block bg-gradient-to-br from-primary/90 via-primary to-primary/80">
+          <div className="relative hidden md:block bg-linear-to-br from-primary/90 via-primary to-primary/80">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4xIj48cGF0aCBkPSJNMzYgMzRjMC0yLjIxLTEuNzktNC00LTRzLTQgMS43OS00IDQgMS43OSA0IDQgNCA0LTEuNzkgNC00eiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
             <div className="relative z-10 flex h-full flex-col items-center justify-center p-12 text-primary-foreground">
               <div className="mb-8">
@@ -169,6 +179,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function Login() {
   const lastResult = useActionData<typeof action>();
+  let navigation = useNavigation();
 
   const [form, fields] = useForm({
     lastResult,
@@ -179,7 +190,7 @@ export default function Login() {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-gradient-to-br from-background via-background to-muted p-6 md:p-10">
       <div className="w-full max-w-sm md:max-w-4xl">
-        <LoginForm form={form} fields={fields} />
+        <LoginForm form={form} fields={fields} navigation={navigation} />
       </div>
     </div>
   );
