@@ -89,19 +89,55 @@ export default function EditLicensePage() {
   });
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 md:p-8 max-w-2xl mx-auto">
+      {/* Breadcrumb */}
       <div className="mb-6">
-        <Link to={`/clients/${client.id}/licenses`} className="text-blue-600 hover:text-blue-800">
-          ← Volver a Licencias de {client.name}
+        <Link
+          to={`/clients/${client.id}/licenses`}
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          Volver a Licencias de {client.name}
         </Link>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
+      <Card className="border-0 shadow-xl">
+        <CardContent className="p-8">
           <Form method="post" {...getFormProps(form)}>
             <FieldGroup>
-              <div className="mb-4">
-                <h1 className="text-2xl font-bold">Editar Licencia</h1>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-6 w-6"
+                  >
+                    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    <path d="m15 5 4 4" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Editar Licencia</h1>
+                  <p className="text-muted-foreground text-sm">
+                    Actualiza los datos de esta licencia
+                  </p>
+                </div>
               </div>
 
               {form.errors && <ErrorList errors={{ form: form.errors }} />}
@@ -113,7 +149,7 @@ export default function EditLicensePage() {
                   key={fields.key.key}
                   defaultValue={fields.key.initialValue}
                   placeholder="XXXX-XXXX-XXXX-XXXX"
-                  className="font-mono"
+                  className="font-mono h-11"
                 />
                 {fields.key.errors && <ErrorList errors={{ key: fields.key.errors }} />}
               </Field>
@@ -125,6 +161,7 @@ export default function EditLicensePage() {
                   key={fields.product.key}
                   defaultValue={fields.product.initialValue}
                   placeholder="Nombre del producto"
+                  className="h-11"
                 />
                 {fields.product.errors && <ErrorList errors={{ product: fields.product.errors }} />}
               </Field>
@@ -136,11 +173,10 @@ export default function EditLicensePage() {
                   key={fields.machineId.key}
                   defaultValue={fields.machineId.initialValue}
                   placeholder="Identificador único de la máquina"
-                  className="font-mono"
+                  className="font-mono h-11"
                 />
                 <FieldDescription>
-                  Identificador de la máquina donde está activada la licencia. Deja vacío para
-                  desvincular.
+                  Deja vacío para desvincular la licencia de la máquina actual.
                 </FieldDescription>
                 {fields.machineId.errors && (
                   <ErrorList errors={{ machineId: fields.machineId.errors }} />
@@ -153,49 +189,90 @@ export default function EditLicensePage() {
                   {...getInputProps(fields.expiresAt, { type: 'datetime-local' })}
                   key={fields.expiresAt.key}
                   defaultValue={fields.expiresAt.initialValue}
+                  className="h-11"
                 />
-                <FieldDescription>Deja vacío para una licencia sin expiración.</FieldDescription>
+                <FieldDescription>Deja vacío para una licencia permanente.</FieldDescription>
                 {fields.expiresAt.errors && (
                   <ErrorList errors={{ expiresAt: fields.expiresAt.errors }} />
                 )}
               </Field>
 
               <Field orientation="horizontal">
-                <input
-                  type="checkbox"
-                  id={fields.isActive.id}
-                  name={fields.isActive.name}
-                  key={fields.isActive.key}
-                  defaultChecked={license.isActive}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <FieldLabel htmlFor={fields.isActive.id}>Licencia activa</FieldLabel>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id={fields.isActive.id}
+                    name={fields.isActive.name}
+                    key={fields.isActive.key}
+                    defaultChecked={license.isActive}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  <span className="ms-3 text-sm font-medium">Licencia activa</span>
+                </label>
               </Field>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-2">
+              <div className="bg-muted/50 rounded-xl p-5 border">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 text-muted-foreground"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4" />
+                    <path d="M12 8h.01" />
+                  </svg>
                   Información de la licencia
                 </h3>
-                <dl className="grid grid-cols-2 gap-2 text-sm">
-                  <dt className="text-gray-500">Creada:</dt>
-                  <dd className="text-gray-900">
-                    {new Date(license.createdAt).toLocaleString('es-ES')}
-                  </dd>
-                  <dt className="text-gray-500">Última actualización:</dt>
-                  <dd className="text-gray-900">
-                    {new Date(license.updatedAt).toLocaleString('es-ES')}
-                  </dd>
+                <dl className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="bg-background rounded-lg p-3 border">
+                    <dt className="text-muted-foreground text-xs mb-1">Creada</dt>
+                    <dd className="font-medium">
+                      {new Date(license.createdAt).toLocaleString('es-ES', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </dd>
+                  </div>
+                  <div className="bg-background rounded-lg p-3 border">
+                    <dt className="text-muted-foreground text-xs mb-1">Última actualización</dt>
+                    <dd className="font-medium">
+                      {new Date(license.updatedAt).toLocaleString('es-ES', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short',
+                      })}
+                    </dd>
+                  </div>
                 </dl>
               </div>
 
-              <div className="flex gap-4 pt-4">
-                <Button type="submit">Guardar Cambios</Button>
-                <Link
-                  to={`/clients/${client.id}/licenses`}
-                  className="inline-flex items-center justify-center rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
-                >
-                  Cancelar
-                </Link>
+              <div className="flex gap-3 pt-6 border-t">
+                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 mr-2"
+                  >
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                    <polyline points="17 21 17 13 7 13 7 21" />
+                    <polyline points="7 3 7 8 15 8" />
+                  </svg>
+                  Guardar Cambios
+                </Button>
+                <Button variant="outline" asChild className="h-11">
+                  <Link to={`/clients/${client.id}/licenses`}>Cancelar</Link>
+                </Button>
               </div>
             </FieldGroup>
           </Form>

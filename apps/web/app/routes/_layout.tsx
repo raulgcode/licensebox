@@ -44,9 +44,9 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30">
       <Navbar user={user} />
-      <main>
+      <main className="animate-in fade-in duration-300">
         <Outlet />
       </main>
     </div>

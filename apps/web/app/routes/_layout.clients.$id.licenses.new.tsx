@@ -84,19 +84,35 @@ export default function NewLicensePage() {
   });
 
   return (
-    <div className="p-6 max-w-2xl mx-auto">
+    <div className="p-6 md:p-8 max-w-2xl mx-auto">
+      {/* Breadcrumb */}
       <div className="mb-6">
-        <Link to={`/clients/${client.id}/licenses`} className="text-blue-600 hover:text-blue-800">
-          ← Volver a Licencias de {client.name}
+        <Link 
+          to={`/clients/${client.id}/licenses`} 
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+            <path d="m15 18-6-6 6-6"/>
+          </svg>
+          Volver a Licencias de {client.name}
         </Link>
       </div>
 
-      <Card>
-        <CardContent className="p-6">
+      <Card className="border-0 shadow-xl">
+        <CardContent className="p-8">
           <Form method="post" {...getFormProps(form)}>
             <FieldGroup>
-              <div className="mb-4">
-                <h1 className="text-2xl font-bold">Nueva Licencia para {client.name}</h1>
+              <div className="flex items-center gap-4 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold tracking-tight">Nueva Licencia</h1>
+                  <p className="text-muted-foreground text-sm">Para el cliente: <span className="font-medium text-foreground">{client.name}</span></p>
+                </div>
               </div>
 
               {form.errors && <ErrorList errors={{ form: form.errors }} />}
@@ -108,10 +124,10 @@ export default function NewLicensePage() {
                   key={fields.key.key}
                   defaultValue={fields.key.initialValue}
                   placeholder="XXXX-XXXX-XXXX-XXXX"
-                  className="font-mono"
+                  className="font-mono h-11"
                 />
                 <FieldDescription>
-                  Se ha generado una clave automáticamente. Puedes modificarla si lo deseas.
+                  Se ha generado automáticamente. Puedes modificarla si lo deseas.
                 </FieldDescription>
                 {fields.key.errors && <ErrorList errors={{ key: fields.key.errors }} />}
               </Field>
@@ -120,7 +136,8 @@ export default function NewLicensePage() {
                 <FieldLabel htmlFor={fields.product.id}>Producto *</FieldLabel>
                 <Input
                   {...getInputProps(fields.product, { type: 'text' })}
-                  placeholder="Nombre del producto"
+                  placeholder="Ej: Software Premium, Plan Enterprise..."
+                  className="h-11"
                 />
                 {fields.product.errors && <ErrorList errors={{ product: fields.product.errors }} />}
               </Field>
@@ -129,11 +146,11 @@ export default function NewLicensePage() {
                 <FieldLabel htmlFor={fields.machineId.id}>ID de Máquina</FieldLabel>
                 <Input
                   {...getInputProps(fields.machineId, { type: 'text' })}
-                  placeholder="Identificador único de la máquina (opcional)"
-                  className="font-mono"
+                  placeholder="Identificador único del dispositivo"
+                  className="font-mono h-11"
                 />
                 <FieldDescription>
-                  Deja vacío si la licencia aún no ha sido activada en una máquina.
+                  Opcional. Deja vacío si aún no ha sido activada.
                 </FieldDescription>
                 {fields.machineId.errors && (
                   <ErrorList errors={{ machineId: fields.machineId.errors }} />
@@ -142,32 +159,40 @@ export default function NewLicensePage() {
 
               <Field>
                 <FieldLabel htmlFor={fields.expiresAt.id}>Fecha de Expiración</FieldLabel>
-                <Input {...getInputProps(fields.expiresAt, { type: 'datetime-local' })} />
-                <FieldDescription>Deja vacío para una licencia sin expiración.</FieldDescription>
+                <Input 
+                  {...getInputProps(fields.expiresAt, { type: 'datetime-local' })} 
+                  className="h-11"
+                />
+                <FieldDescription>Deja vacío para una licencia permanente.</FieldDescription>
                 {fields.expiresAt.errors && (
                   <ErrorList errors={{ expiresAt: fields.expiresAt.errors }} />
                 )}
               </Field>
 
               <Field orientation="horizontal">
-                <input
-                  type="checkbox"
-                  id={fields.isActive.id}
-                  name={fields.isActive.name}
-                  defaultChecked
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                />
-                <FieldLabel htmlFor={fields.isActive.id}>Licencia activa</FieldLabel>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id={fields.isActive.id}
+                    name={fields.isActive.name}
+                    defaultChecked
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  <span className="ms-3 text-sm font-medium">Licencia activa</span>
+                </label>
               </Field>
 
-              <div className="flex gap-4 pt-4">
-                <Button type="submit">Crear Licencia</Button>
-                <Link
-                  to={`/clients/${client.id}/licenses`}
-                  className="inline-flex items-center justify-center rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
-                >
-                  Cancelar
-                </Link>
+              <div className="flex gap-3 pt-6 border-t">
+                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  Crear Licencia
+                </Button>
+                <Button variant="outline" asChild className="h-11">
+                  <Link to={`/clients/${client.id}/licenses`}>Cancelar</Link>
+                </Button>
               </div>
             </FieldGroup>
           </Form>
