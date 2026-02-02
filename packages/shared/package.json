@@ -4,30 +4,34 @@
   "private": true,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "types": "./src/index.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./src/index.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./types": {
-      "types": "./dist/types/index.d.ts",
+      "types": "./src/types/index.ts",
       "import": "./dist/types/index.mjs",
-      "require": "./dist/types/index.js"
+      "require": "./dist/types/index.js",
+      "default": "./dist/types/index.js"
     },
     "./validations": {
-      "types": "./dist/validations/index.d.ts",
+      "types": "./src/validations/index.ts",
       "import": "./dist/validations/index.mjs",
-      "require": "./dist/validations/index.js"
+      "require": "./dist/validations/index.js",
+      "default": "./dist/validations/index.js"
     }
   },
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch",
+    "watch": "tsup --watch",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@nestjs/swagger": "^11.2.5",
     "zod": "^3.24.3"
   },
   "devDependencies": {

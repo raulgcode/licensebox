@@ -1,6 +1,11 @@
 // Authentication DTOs
+import { ApiProperty } from '@nestjs/swagger';
+
 export class LoginDto {
+  @ApiProperty({ description: 'User email', example: 'admin@example.com', type: String })
   email!: string;
+
+  @ApiProperty({ description: 'User password', example: 'password123', type: String })
   password!: string;
 }
 
@@ -37,7 +42,10 @@ export interface AuthenticatedUser {
  * DTO for changing password
  */
 export class ChangePasswordDto {
+  @ApiProperty({ description: 'Current password', type: String })
   currentPassword!: string;
+
+  @ApiProperty({ description: 'New password', minLength: 6, type: String })
   newPassword!: string;
 }
 
