@@ -335,6 +335,50 @@ This project includes GitHub Actions workflows for automated deployment:
 
 See [CI_CD.md](CI_CD.md) for detailed CI/CD documentation.
 
+### Connecting to Production Database Locally
+
+You can connect to your Fly.io Postgres database from your local machine using the `fly proxy` command. This creates a secure WireGuard tunnel without additional setup.
+
+**Option 1: Direct psql shell**
+
+```bash
+fly postgres connect -a <postgres-app-name>
+```
+
+**Option 2: Proxy for local database clients**
+
+Forward the database port to your local machine:
+
+```bash
+fly proxy 5432 -a <postgres-app-name>
+```
+
+Then connect using any database client (DBeaver, TablePlus, pgAdmin, etc.) with:
+
+```
+Host: localhost
+Port: 5432
+User: postgres
+Password: <your-postgres-password>
+Database: <your-database-name>
+```
+
+Or using psql:
+
+```bash
+psql postgres://postgres:<password>@localhost:5432/<database-name>
+```
+
+**If port 5432 is already in use**, use a different local port:
+
+```bash
+fly proxy 15432:5432 -a <postgres-app-name>
+```
+
+Then connect to `localhost:15432` instead.
+
+> 📖 More info: https://fly.io/docs/postgres/connecting/connecting-with-flyctl/
+
 ## 🤝 Contributing
 
 1. Fork the repository
