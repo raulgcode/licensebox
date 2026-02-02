@@ -1,0 +1,322 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target to deploy'
+        required: true
+        type: choice
+        options:
+          - api
+          - web
+          - both
+      skip_semantic_release:
+        description: 'Skip semantic release check (force deploy)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  # ==========================================
+  # Build & Validate
+  # ==========================================
+  build:
+    name: Build & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @licensebox/database db:generate:prod
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run tests
+        run: pnpm test
+
+  # ==========================================
+  # Check for API Release
+  # ==========================================
+  check-api-release:
+    name: Check API Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: inputs.target == 'api' || inputs.target == 'both'
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (API) - Dry Run
+        id: semantic
+        if: inputs.skip_semantic_release == false
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/api
+          dry_run: true
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine if should deploy
+        id: check
+        run: |
+          if [[ "${{ inputs.skip_semantic_release }}" == "true" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "🚀 Force deploy enabled - skipping semantic release check"
+          elif [[ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "📦 New API version detected: ${{ steps.semantic.outputs.new_release_version }}"
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No new API release needed based on commits"
+          fi
+
+  # ==========================================
+  # Check for Web Release
+  # ==========================================
+  check-web-release:
+    name: Check Web Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: inputs.target == 'web' || inputs.target == 'both'
+    outputs:
+      should-deploy: ${{ steps.check.outputs.should-deploy }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (Web) - Dry Run
+        id: semantic
+        if: inputs.skip_semantic_release == false
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/web
+          dry_run: true
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine if should deploy
+        id: check
+        run: |
+          if [[ "${{ inputs.skip_semantic_release }}" == "true" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "🚀 Force deploy enabled - skipping semantic release check"
+          elif [[ "${{ steps.semantic.outputs.new_release_published }}" == "true" ]]; then
+            echo "should-deploy=true" >> $GITHUB_OUTPUT
+            echo "📦 New Web version detected: ${{ steps.semantic.outputs.new_release_version }}"
+          else
+            echo "should-deploy=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No new Web release needed based on commits"
+          fi
+
+  # ==========================================
+  # Release & Deploy API
+  # ==========================================
+  release-deploy-api:
+    name: Release & Deploy API
+    runs-on: ubuntu-latest
+    needs: check-api-release
+    if: needs.check-api-release.outputs.should-deploy == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (API)
+        if: inputs.skip_semantic_release == false
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/api
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy API to Fly.io
+        run: flyctl deploy -c fly.api.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🚀 API Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: API" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Deploy**: ${{ inputs.skip_semantic_release }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://licensebox-api.fly.dev" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================
+  # Release & Deploy Web
+  # ==========================================
+  release-deploy-web:
+    name: Release & Deploy Web
+    runs-on: ubuntu-latest
+    needs: check-web-release
+    if: needs.check-web-release.outputs.should-deploy == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (Web)
+        if: inputs.skip_semantic_release == false
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/web
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Web to Fly.io
+        run: flyctl deploy -c fly.web.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## 🌐 Web Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Target**: Web" >> $GITHUB_STEP_SUMMARY
+          echo "- **Force Deploy**: ${{ inputs.skip_semantic_release }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: https://licensebox-web.fly.dev" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================
+  # No Deploy Needed
+  # ==========================================
+  no-deploy-api:
+    name: No API Deploy Needed
+    runs-on: ubuntu-latest
+    needs: check-api-release
+    if: needs.check-api-release.outputs.should-deploy == 'false'
+    steps:
+      - name: No deployment
+        run: |
+          echo "## ℹ️ No API Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No new release detected for API. Skipping deployment." >> $GITHUB_STEP_SUMMARY
+          echo "To force a deployment, enable 'Skip semantic release check' option." >> $GITHUB_STEP_SUMMARY
+
+  no-deploy-web:
+    name: No Web Deploy Needed
+    runs-on: ubuntu-latest
+    needs: check-web-release
+    if: needs.check-web-release.outputs.should-deploy == 'false'
+    steps:
+      - name: No deployment
+        run: |
+          echo "## ℹ️ No Web Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "No new release detected for Web. Skipping deployment." >> $GITHUB_STEP_SUMMARY
+          echo "To force a deployment, enable 'Skip semantic release check' option." >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,326 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  # ==========================================
+  # Detect changes in each package
+  # ==========================================
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+      database: ${{ steps.filter.outputs.database }}
+      shared: ${{ steps.filter.outputs.shared }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect file changes
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/database/**'
+              - 'packages/shared/**'
+            web:
+              - 'apps/web/**'
+              - 'packages/shared/**'
+            database:
+              - 'packages/database/**'
+            shared:
+              - 'packages/shared/**'
+
+  # ==========================================
+  # Build & Test
+  # ==========================================
+  build-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @licensebox/database db:generate:prod
+
+      - name: Build packages
+        run: pnpm build
+
+      - name: Run linting
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
+
+  # ==========================================
+  # Semantic Release - Database
+  # ==========================================
+  release-database:
+    name: Release Database
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-test]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.detect-changes.outputs.database == 'true'
+    outputs:
+      new-release: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (Database)
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: packages/database
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output release info
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          echo "📦 Database new version: ${{ steps.semantic.outputs.new_release_version }}"
+
+  # ==========================================
+  # Semantic Release - API
+  # ==========================================
+  release-api:
+    name: Release API
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-test, release-database]
+    if: |
+      always() && 
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' && 
+      needs.detect-changes.outputs.api == 'true' &&
+      (needs.release-database.result == 'success' || needs.release-database.result == 'skipped')
+    outputs:
+      new-release: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (API)
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/api
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output release info
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          echo "🚀 API new version: ${{ steps.semantic.outputs.new_release_version }}"
+
+  # ==========================================
+  # Semantic Release - Web
+  # ==========================================
+  release-web:
+    name: Release Web
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-test]
+    if: |
+      always() && 
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' && 
+      needs.detect-changes.outputs.web == 'true' &&
+      needs.build-test.result == 'success'
+    outputs:
+      new-release: ${{ steps.semantic.outputs.new_release_published }}
+      version: ${{ steps.semantic.outputs.new_release_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Semantic Release (Web)
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          working_directory: apps/web
+          extra_plugins: |
+            @semantic-release/commit-analyzer
+            @semantic-release/release-notes-generator
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/github
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Output release info
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          echo "🌐 Web new version: ${{ steps.semantic.outputs.new_release_version }}"
+
+  # ==========================================
+  # Deploy API to Fly.io
+  # ==========================================
+  deploy-api:
+    name: Deploy API
+    runs-on: ubuntu-latest
+    needs: [release-api, release-database]
+    if: |
+      always() && 
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' &&
+      (needs.release-api.outputs.new-release == 'true' || needs.release-database.outputs.new-release == 'true')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy API to Fly.io
+        run: flyctl deploy -c fly.api.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # ==========================================
+  # Deploy Web to Fly.io
+  # ==========================================
+  deploy-web:
+    name: Deploy Web
+    runs-on: ubuntu-latest
+    needs: [release-web]
+    if: |
+      always() && 
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' &&
+      needs.release-web.outputs.new-release == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy Web to Fly.io
+        run: flyctl deploy -c fly.web.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+  # ==========================================
+  # Summary
+  # ==========================================
+  summary:
+    name: Pipeline Summary
+    runs-on: ubuntu-latest
+    needs: [detect-changes, build-test, release-database, release-api, release-web, deploy-api, deploy-web]
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Summary
+        run: |
+          echo "## 📊 Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Changes Detected" >> $GITHUB_STEP_SUMMARY
+          echo "- API: ${{ needs.detect-changes.outputs.api }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Web: ${{ needs.detect-changes.outputs.web }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Database: ${{ needs.detect-changes.outputs.database }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Releases" >> $GITHUB_STEP_SUMMARY
+          echo "- Database: ${{ needs.release-database.outputs.new-release == 'true' && needs.release-database.outputs.version || 'No new release' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- API: ${{ needs.release-api.outputs.new-release == 'true' && needs.release-api.outputs.version || 'No new release' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Web: ${{ needs.release-web.outputs.new-release == 'true' && needs.release-web.outputs.version || 'No new release' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Deployments" >> $GITHUB_STEP_SUMMARY
+          echo "- API Deploy: ${{ needs.deploy-api.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Web Deploy: ${{ needs.deploy-web.result }}" >> $GITHUB_STEP_SUMMARY
