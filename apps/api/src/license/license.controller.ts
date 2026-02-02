@@ -53,7 +53,11 @@ export class LicenseController {
   async validate(
     @Body() data: ValidateLicenseDto,
   ): Promise<ValidateLicenseResponseDto> {
-    return this.licenseService.validate(data.key, data.machineId);
+    return this.licenseService.validate(
+      data.key,
+      data.clientSecret,
+      data.machineId,
+    );
   }
 
   /**
@@ -65,7 +69,11 @@ export class LicenseController {
   async activate(
     @Body() data: ActivateLicenseDto,
   ): Promise<ActivateLicenseResponseDto> {
-    return this.licenseService.activate(data.key, data.machineId);
+    return this.licenseService.activate(
+      data.key,
+      data.clientSecret,
+      data.machineId,
+    );
   }
 
   /**

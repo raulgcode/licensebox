@@ -4,6 +4,7 @@ export interface ClientDto {
   id: string;
   name: string;
   description: string | null;
+  secret: string; // Secret key for API authentication
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;

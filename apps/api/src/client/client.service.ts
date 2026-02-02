@@ -197,4 +197,37 @@ export class ClientService {
 
     return client as ClientDto;
   }
+
+  /**
+   * Find a client by their secret key
+   */
+  async findBySecret(secret: string): Promise<ClientDto | null> {
+    const client = await this.prisma.client.findUnique({
+      where: { secret },
+    });
+
+    return client as ClientDto | null;
+  }
+
+  /**
+   * Regenerate the secret for a client
+   */
+  async regenerateSecret(id: string): Promise<ClientDto> {
+    const existingClient = await this.prisma.client.findUnique({
+      where: { id },
+    });
+
+    if (!existingClient) {
+      throw new NotFoundException(`Client with ID "${id}" not found`);
+    }
+
+    const client = await this.prisma.client.update({
+      where: { id },
+      data: {
+        secret: crypto.randomUUID(),
+      },
+    });
+
+    return client as ClientDto;
+  }
 }

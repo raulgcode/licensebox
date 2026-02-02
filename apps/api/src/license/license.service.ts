@@ -85,6 +85,7 @@ export class LicenseService {
             id: true,
             name: true,
             description: true,
+            secret: true,
             isActive: true,
           },
         },
@@ -242,6 +243,7 @@ export class LicenseService {
 
   async validate(
     key: string,
+    clientSecret: string,
     machineId?: string,
   ): Promise<ValidateLicenseResponseDto> {
     const license = await this.findByKey(key);
@@ -250,6 +252,14 @@ export class LicenseService {
       return {
         valid: false,
         message: 'License not found',
+      };
+    }
+
+    // Validate clientSecret matches the license's client
+    if (license.client.secret !== clientSecret) {
+      return {
+        valid: false,
+        message: 'Invalid client credentials',
       };
     }
 
@@ -294,6 +304,7 @@ export class LicenseService {
 
   async activate(
     key: string,
+    clientSecret: string,
     machineId: string,
   ): Promise<ActivateLicenseResponseDto> {
     const license = await this.findByKey(key);
@@ -302,6 +313,14 @@ export class LicenseService {
       return {
         success: false,
         message: 'License not found',
+      };
+    }
+
+    // Validate clientSecret matches the license's client
+    if (license.client.secret !== clientSecret) {
+      return {
+        success: false,
+        message: 'Invalid client credentials',
       };
     }
 

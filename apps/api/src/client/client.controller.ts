@@ -85,4 +85,13 @@ export class ClientController {
   async toggleActive(@Param('id') id: string): Promise<ClientDto> {
     return this.clientService.toggleActive(id);
   }
+
+  /**
+   * Regenerate the secret key for a client
+   */
+  @Post(':id/regenerate-secret')
+  @HttpCode(HttpStatus.OK)
+  async regenerateSecret(@Param('id') id: string): Promise<ClientDto> {
+    return this.clientService.regenerateSecret(id);
+  }
 }

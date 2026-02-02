@@ -17,6 +17,7 @@ export interface LicenseWithClientDto extends LicenseDto {
     id: string;
     name: string;
     description: string | null;
+    secret: string;
     isActive: boolean;
   };
 }
@@ -41,6 +42,7 @@ export class UpdateLicenseDto {
 
 export class ValidateLicenseDto {
   key!: string;
+  clientSecret!: string; // Required secret for authentication
   machineId?: string;
 }
 
@@ -52,6 +54,7 @@ export interface ValidateLicenseResponseDto {
 
 export class ActivateLicenseDto {
   key!: string;
+  clientSecret!: string; // Required secret for authentication
   machineId!: string;
 }
 
