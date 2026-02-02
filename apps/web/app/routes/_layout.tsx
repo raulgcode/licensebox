@@ -1,4 +1,5 @@
 import { Outlet, redirect, useLoaderData } from 'react-router';
+import { Toaster } from '@/components/ui/sonner';
 import { createAuthenticatedApi } from '@/lib/api';
 import { getAuthToken } from '@/lib/auth.server';
 import { userContext } from '@/context';
@@ -48,6 +49,7 @@ export default function Layout() {
       <Navbar user={user} />
       <main className="animate-in fade-in duration-300">
         <Outlet />
+        <Toaster />
       </main>
     </div>
   );

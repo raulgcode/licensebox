@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { Form, redirect, useActionData, useLoaderData, Link, data } from 'react-router';
+import { Form, redirect, useActionData, useLoaderData, useNavigation, Link, data } from 'react-router';
 import { getFormProps, getInputProps } from '@conform-to/react';
 import { parseWithZod } from '@conform-to/zod';
 import { z } from 'zod';
@@ -73,6 +73,10 @@ export async function action({ params, request }: ActionFunctionArgs) {
 export default function NewLicensePage() {
   const { client, suggestedKey } = useLoaderData<typeof loader>();
   const lastResult = useActionData<typeof action>();
+  const navigation = useNavigation();
+  const isSubmitting = navigation.state === 'submitting';
+  const isLoading = navigation.state === 'loading';
+
   const [form, fields] = useForm({
     lastResult,
     schema,
@@ -184,11 +188,39 @@ export default function NewLicensePage() {
               </Field>
 
               <div className="flex gap-3 pt-6 border-t">
-                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
-                    <path d="M12 5v14M5 12h14"/>
-                  </svg>
-                  Crear Licencia
+                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25" disabled={isSubmitting || isLoading}>
+                  {isSubmitting && (
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                  )}
+                  {isSubmitting && 'Creando...'}
+                  {isLoading && 'Cargando...'}
+                  {!isSubmitting && !isLoading && (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
+                        <path d="M12 5v14M5 12h14"/>
+                      </svg>
+                      Crear Licencia
+                    </>
+                  )}
                 </Button>
                 <Button variant="outline" asChild className="h-11">
                   <Link to={`/clients/${client.id}/licenses`}>Cancelar</Link>

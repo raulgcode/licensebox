@@ -32,3 +32,18 @@ export interface AuthenticatedUser {
   name: string | null;
   isActive: boolean;
 }
+
+/**
+ * DTO for changing password
+ */
+export class ChangePasswordDto {
+  currentPassword!: string;
+  newPassword!: string;
+}
+
+/**
+ * Response for password change
+ */
+export interface ChangePasswordResponseDto {
+  message: string;
+}

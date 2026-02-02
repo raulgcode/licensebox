@@ -9,7 +9,13 @@ import {
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
-import { LoginDto, LoginResponseDto, UserProfileDto } from '@licensebox/shared';
+import {
+  LoginDto,
+  LoginResponseDto,
+  UserProfileDto,
+  ChangePasswordDto,
+  ChangePasswordResponseDto,
+} from '@licensebox/shared';
 import type { JwtPayload } from '@licensebox/shared';
 
 @Controller('auth')
@@ -33,5 +39,18 @@ export class AuthController {
     @Request() req: Request & { user: JwtPayload },
   ): Promise<UserProfileDto> {
     return this.authService.validateUser(req.user.sub);
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @Request() req: Request & { user: JwtPayload },
+    @Body() changePasswordDto: ChangePasswordDto,
+  ): Promise<ChangePasswordResponseDto> {
+    return await this.authService.changePassword(
+      req.user.sub,
+      changePasswordDto.currentPassword,
+      changePasswordDto.newPassword,
+    );
   }
 }
