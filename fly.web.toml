@@ -1,0 +1,42 @@
+# Fly.io configuration for LicenseBox Web
+# Deploy with: fly deploy -c fly.web.toml
+# https://fly.io/docs/reference/configuration/
+
+app = 'licensebox-web'
+primary_region = 'dfw'
+
+[build]
+  dockerfile = "apps/web/Dockerfile"
+  [build.args]
+    VITE_API_URL = "https://licensebox-api.fly.dev"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [http_service.concurrency]
+    type = "requests"
+    hard_limit = 250
+    soft_limit = 200
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[checks]
+  [checks.health]
+    type = "http"
+    port = 3000
+    path = "/"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "10s"

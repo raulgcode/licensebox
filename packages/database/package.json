@@ -19,6 +19,7 @@
     "db:push": "dotenv -e ../../.env -- prisma db push",
     "db:seed": "dotenv -e ../../.env -- tsx prisma/seed.ts",
     "db:seed:prod": "tsx prisma/seed.ts",
+    "db:seed:prod:users": "tsx prisma/seed-prod.ts",
     "db:reset": "dotenv -e ../../.env -- prisma migrate reset",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\" \"prisma/**/*.prisma\""

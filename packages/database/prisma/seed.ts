@@ -13,7 +13,7 @@ if (fs.existsSync(envPath)) {
 }
 
 const prisma = new PrismaClient();
-
+const GLOBAL_PSWD = 'Admin123!';
 async function hashPassword(password: string): Promise<string> {
   const saltRounds = 10;
   return bcrypt.hash(password, saltRounds);
@@ -23,8 +23,8 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // Get admin credentials from environment variables
-  const adminEmail = process.env.ADMIN_EMAIL || 'admin@licensebox.com';
-  const adminPasswordRaw = process.env.ADMIN_PASSWORD;
+  const adminEmail = process.env.ADMIN_EMAIL || 'armandourbina@gmail.com';
+  const adminPasswordRaw = process.env.ADMIN_PASSWORD || GLOBAL_PSWD;
 
   if (!adminPasswordRaw) {
     throw new Error(
@@ -39,7 +39,7 @@ async function main() {
     update: {},
     create: {
       email: adminEmail,
-      name: 'Admin User',
+      name: 'Raul Gonzalez',
       password: adminPassword,
       isActive: true,
     },
@@ -49,31 +49,43 @@ async function main() {
   console.log('   Email:', adminEmail);
 
   // Create sample users
-  const user1Password = await hashPassword('password123');
+  const user1Password = await hashPassword(GLOBAL_PSWD);
   const user1 = await prisma.user.upsert({
-    where: { email: 'john@example.com' },
+    where: { email: 'user@licensebox.com' },
     update: {},
     create: {
-      email: 'john@example.com',
-      name: 'John Doe',
+      email: 'user@licensebox.com',
+      name: 'Dummy User',
       password: user1Password,
       isActive: true,
     },
   });
 
-  const user2Password = await hashPassword('password123');
+  const user2Password = await hashPassword(GLOBAL_PSWD);
   const user2 = await prisma.user.upsert({
-    where: { email: 'jane@example.com' },
+    where: { email: 'saulo.montero@smgconsultores.com' },
     update: {},
     create: {
-      email: 'jane@example.com',
-      name: 'Jane Smith',
+      email: 'saulo.montero@smgconsultores.com',
+      name: 'Saulo Montero',
       password: user2Password,
       isActive: true,
     },
   });
 
-  console.log('✅ Sample users created:', user1.email, user2.email);
+  const user3Password = await hashPassword(GLOBAL_PSWD);
+  const user3 = await prisma.user.upsert({
+    where: { email: 'andreycm007@gmail.com' },
+    update: {},
+    create: {
+      email: 'andreycm007@gmail.com',
+      name: 'Andrey Caamaño',
+      password: user3Password,
+      isActive: true,
+    },
+  });
+
+  console.log('✅ Sample users created:', user1.email, user2.email, user3.email);
 
   // Create sample clients
   const client1Id = uuid();
