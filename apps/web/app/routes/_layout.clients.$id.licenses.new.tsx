@@ -1,5 +1,13 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { Form, redirect, useActionData, useLoaderData, useNavigation, Link, data } from 'react-router';
+import {
+  Form,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+  Link,
+  data,
+} from 'react-router';
 import { getFormProps, getInputProps } from '@conform-to/react';
 import { parseWithZod } from '@conform-to/zod';
 import { z } from 'zod';
@@ -91,12 +99,21 @@ export default function NewLicensePage() {
     <div className="p-6 md:p-8 max-w-2xl mx-auto">
       {/* Breadcrumb */}
       <div className="mb-6">
-        <Link 
-          to={`/clients/${client.id}/licenses`} 
+        <Link
+          to={`/clients/${client.id}/licenses`}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-            <path d="m15 18-6-6 6-6"/>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-4 w-4"
+          >
+            <path d="m15 18-6-6 6-6" />
           </svg>
           Volver a Licencias de {client.name}
         </Link>
@@ -108,14 +125,26 @@ export default function NewLicensePage() {
             <FieldGroup>
               <div className="flex items-center gap-4 mb-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/10 text-primary">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-6 w-6"
+                  >
                     <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
                     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
                   </svg>
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold tracking-tight">Nueva Licencia</h1>
-                  <p className="text-muted-foreground text-sm">Para el cliente: <span className="font-medium text-foreground">{client.name}</span></p>
+                  <p className="text-muted-foreground text-sm">
+                    Para el cliente:{' '}
+                    <span className="font-medium text-foreground">{client.name}</span>
+                  </p>
                 </div>
               </div>
 
@@ -163,8 +192,8 @@ export default function NewLicensePage() {
 
               <Field>
                 <FieldLabel htmlFor={fields.expiresAt.id}>Fecha de Expiración</FieldLabel>
-                <Input 
-                  {...getInputProps(fields.expiresAt, { type: 'datetime-local' })} 
+                <Input
+                  {...getInputProps(fields.expiresAt, { type: 'datetime-local' })}
                   className="h-11"
                 />
                 <FieldDescription>Deja vacío para una licencia permanente.</FieldDescription>
@@ -188,7 +217,11 @@ export default function NewLicensePage() {
               </Field>
 
               <div className="flex gap-3 pt-6 border-t">
-                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25" disabled={isSubmitting || isLoading}>
+                <Button
+                  type="submit"
+                  className="flex-1 h-11 shadow-lg shadow-primary/25"
+                  disabled={isSubmitting || isLoading}
+                >
                   {isSubmitting && (
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4"
@@ -215,8 +248,17 @@ export default function NewLicensePage() {
                   {isLoading && 'Cargando...'}
                   {!isSubmitting && !isLoading && (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 mr-2">
-                        <path d="M12 5v14M5 12h14"/>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-4 w-4 mr-2"
+                      >
+                        <path d="M12 5v14M5 12h14" />
                       </svg>
                       Crear Licencia
                     </>

@@ -1,5 +1,13 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { Form, redirect, useActionData, useLoaderData, useNavigation, Link, data } from 'react-router';
+import {
+  Form,
+  redirect,
+  useActionData,
+  useLoaderData,
+  useNavigation,
+  Link,
+  data,
+} from 'react-router';
 import { getFormProps, getInputProps } from '@conform-to/react';
 import { parseWithZod } from '@conform-to/zod';
 import { z } from 'zod';
@@ -171,7 +179,11 @@ export default function EditClientPage() {
               </Field>
 
               <div className="flex gap-3 pt-6 border-t">
-                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25" disabled={isSubmitting || isLoading}>
+                <Button
+                  type="submit"
+                  className="flex-1 h-11 shadow-lg shadow-primary/25"
+                  disabled={isSubmitting || isLoading}
+                >
                   {isSubmitting && (
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4"

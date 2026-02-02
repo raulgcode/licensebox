@@ -161,7 +161,11 @@ export default function NewClientPage() {
               </Field>
 
               <div className="flex gap-3 pt-6 border-t">
-                <Button type="submit" className="flex-1 h-11 shadow-lg shadow-primary/25" disabled={isSubmitting || isLoading}>
+                <Button
+                  type="submit"
+                  className="flex-1 h-11 shadow-lg shadow-primary/25"
+                  disabled={isSubmitting || isLoading}
+                >
                   {isSubmitting && (
                     <svg
                       className="animate-spin -ml-1 mr-2 h-4 w-4"
