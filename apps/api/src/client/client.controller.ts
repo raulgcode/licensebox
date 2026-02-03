@@ -23,6 +23,7 @@ import {
   ClientWithLicensesDto,
   CreateClientDto,
   UpdateClientDto,
+  RegenerateSecretResponseDto,
 } from '@licensebox/shared';
 
 @ApiTags('clients')
@@ -69,9 +70,15 @@ export class ClientController {
    * Create a new client
    */
   @Post()
-  @ApiOperation({ summary: 'Create a new client' })
+  @ApiOperation({
+    summary: 'Create a new client',
+    description:
+      'Creates a new client and returns the client secret. The secret is shown only once.',
+  })
   @ApiResponse({ status: 201, description: 'Client created successfully' })
-  async create(@Body() data: CreateClientDto): Promise<ClientDto> {
+  async create(
+    @Body() data: CreateClientDto,
+  ): Promise<RegenerateSecretResponseDto> {
     return this.clientService.create(data);
   }
 
@@ -121,11 +128,13 @@ export class ClientController {
   @ApiOperation({
     summary: 'Regenerate client secret',
     description:
-      'Generate a new secret key for the client. The old secret will be invalidated.',
+      'Generate a new secret key for the client. The old secret will be invalidated. The new secret is returned only once.',
   })
   @ApiResponse({ status: 200, description: 'Secret regenerated successfully' })
   @ApiResponse({ status: 404, description: 'Client not found' })
-  async regenerateSecret(@Param('id') id: string): Promise<ClientDto> {
+  async regenerateSecret(
+    @Param('id') id: string,
+  ): Promise<RegenerateSecretResponseDto> {
     return this.clientService.regenerateSecret(id);
   }
 }

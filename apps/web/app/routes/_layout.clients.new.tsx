@@ -1,5 +1,6 @@
 import type { ActionFunctionArgs } from 'react-router';
-import { Form, redirect, useActionData, useNavigation, Link } from 'react-router';
+import { Form, redirect, useActionData, useNavigation, Link, data } from 'react-router';
+import { useState, useEffect } from 'react';
 import { getFormProps, getInputProps } from '@conform-to/react';
 import { parseWithZod } from '@conform-to/zod';
 import { z } from 'zod';
@@ -10,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { useForm } from '@/hooks/useForm';
 import { ErrorList } from '@/components/errorList';
 import { createAuthenticatedApi } from '@/lib/api';
+import type { RegenerateSecretResponseDto } from '@licensebox/shared';
+import { ClientSecretModal } from '@/components/client-secret-modal';
 import { isAxiosError } from 'axios';
 
 const schema = z.object({
@@ -32,12 +35,12 @@ export async function action({ request }: ActionFunctionArgs) {
   const { name, description, isActive } = submission.value;
 
   try {
-    await api.post('/clients', {
+    const { data: response } = await api.post<RegenerateSecretResponseDto>('/clients', {
       name: name.trim(),
       description: description?.trim() || null,
       isActive,
     });
-    return redirect('/clients');
+    return data({ success: true, secretData: response });
   } catch (error) {
     if (isAxiosError(error)) {
       return submission.reply({
@@ -55,6 +58,7 @@ export default function NewClientPage() {
   const navigation = useNavigation();
   const isSubmitting = navigation.state === 'submitting';
   const isLoading = navigation.state === 'loading';
+  const [showSecretModal, setShowSecretModal] = useState(false);
 
   const [form, fields] = useForm({
     lastResult,
@@ -64,6 +68,23 @@ export default function NewClientPage() {
       isActive: true,
     },
   });
+
+  // Get the secret data from action if successful
+  const secretData =
+    lastResult && 'success' in lastResult && lastResult.success ? lastResult.secretData : null;
+
+  // Show modal when client is created successfully
+  useEffect(() => {
+    if (secretData && !showSecretModal) {
+      setShowSecretModal(true);
+    }
+  }, [secretData, showSecretModal]);
+
+  const handleCloseModal = () => {
+    setShowSecretModal(false);
+    // Redirect to clients page after modal is closed
+    window.location.href = '/clients';
+  };
 
   return (
     <div className="p-6 md:p-8 max-w-2xl mx-auto">
@@ -216,6 +237,17 @@ export default function NewClientPage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Secret Modal */}
+      {secretData && (
+        <ClientSecretModal
+          isOpen={showSecretModal}
+          onClose={handleCloseModal}
+          secret={secretData.secret}
+          clientName={secretData.name}
+          message={secretData.message}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,11 @@
-import type { LoaderFunctionArgs } from 'react-router';
-import { data, useLoaderData, Link } from 'react-router';
+import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
+import { data, useLoaderData, Link, useFetcher } from 'react-router';
+import { useState, useEffect } from 'react';
 import { createAuthenticatedApi } from '@/lib/api';
-import type { ClientWithLicensesDto } from '@licensebox/shared';
+import type { ClientWithLicensesDto, RegenerateSecretResponseDto } from '@licensebox/shared';
+import { ClientSecretModal } from '@/components/client-secret-modal';
+import { isAxiosError } from 'axios';
+import { Button } from '@/components/ui/button';
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const api = await createAuthenticatedApi(request);
@@ -11,11 +15,57 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
   return data({ client });
 }
 
+export async function action({ params, request }: ActionFunctionArgs) {
+  const api = await createAuthenticatedApi(request);
+  const formData = await request.formData();
+  const intent = formData.get('intent');
+
+  try {
+    if (intent === 'regenerate-secret') {
+      const { data: response } = await api.post<RegenerateSecretResponseDto>(
+        `/clients/${params.id}/regenerate-secret`,
+      );
+      return data({ success: true, secretData: response });
+    }
+  } catch (error) {
+    if (isAxiosError(error)) {
+      return data(
+        { success: false, error: error.response?.data?.message || 'An error occurred' },
+        { status: error.response?.status || 500 },
+      );
+    }
+    throw error;
+  }
+
+  return data({ success: false, error: 'Invalid action' }, { status: 400 });
+}
+
 export default function ClientDetailPage() {
   const { client } = useLoaderData<typeof loader>();
+  const fetcher = useFetcher<typeof action>();
+  const [showSecretModal, setShowSecretModal] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   const activeLicenses = client.licenses?.filter((l) => l.isActive).length || 0;
   const totalLicenses = client.licenses?.length || 0;
+
+  // Handle successful secret regeneration
+  const secretData =
+    fetcher.data?.success && 'secretData' in fetcher.data ? fetcher.data.secretData : null;
+
+  // Show modal when secret is regenerated
+  useEffect(() => {
+    if (secretData) {
+      setShowSecretModal(true);
+    }
+  }, [secretData]);
+
+  const handleRegenerateSecret = () => {
+    setShowConfirmDialog(false);
+    const formData = new FormData();
+    formData.append('intent', 'regenerate-secret');
+    fetcher.submit(formData, { method: 'post' });
+  };
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto">
@@ -98,6 +148,144 @@ export default function ClientDetailPage() {
           Editar Cliente
         </Link>
       </div>
+
+      {/* Client Secret Section */}
+      <div className="bg-card rounded-xl border shadow-sm p-6 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div className="flex items-start gap-3 flex-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10 text-purple-600 shrink-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold mb-1">Secreto del Cliente</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                Este secreto se utiliza para la autenticación de la API. Por seguridad, el secreto
+                está oculto.
+              </p>
+              <div className="flex items-center gap-2 rounded-lg border bg-muted/50 p-3 font-mono text-sm">
+                <code className="flex-1">••••••••-••••-••••-••••-••••••••••••</code>
+              </div>
+            </div>
+          </div>
+          <div>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(true)}
+              disabled={fetcher.state === 'submitting'}
+              className="whitespace-nowrap"
+            >
+              {fetcher.state === 'submitting' ? (
+                <>
+                  <svg
+                    className="animate-spin -ml-1 mr-2 h-4 w-4"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  Regenerando...
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 mr-2"
+                  >
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                    <path d="M16 21h5v-5" />
+                  </svg>
+                  Regenerar Secreto
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="bg-card rounded-xl border shadow-xl p-6 max-w-md mx-4">
+            <div className="flex items-start gap-3 mb-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10 text-amber-600">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-5 w-5"
+                >
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg mb-2">¿Regenerar Secreto del Cliente?</h3>
+                <p className="text-sm text-muted-foreground">
+                  Esto invalidará el secreto actual. Cualquier aplicación que use el secreto antiguo
+                  necesitará ser actualizada. Esta acción no se puede deshacer.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+                Cancelar
+              </Button>
+              <Button variant="destructive" onClick={handleRegenerateSecret}>
+                Sí, Regenerar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Secret Modal */}
+      {secretData && (
+        <ClientSecretModal
+          isOpen={showSecretModal}
+          onClose={() => setShowSecretModal(false)}
+          secret={secretData.secret}
+          clientName={secretData.name}
+          message={secretData.message}
+        />
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

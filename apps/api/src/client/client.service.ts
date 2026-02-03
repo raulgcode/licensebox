@@ -9,6 +9,7 @@ import {
   ClientWithLicensesDto,
   CreateClientDto,
   UpdateClientDto,
+  RegenerateSecretResponseDto,
 } from '@licensebox/shared';
 
 @Injectable()
@@ -117,16 +118,25 @@ export class ClientService {
     return client as ClientWithLicensesDto;
   }
 
-  async create(data: CreateClientDto): Promise<ClientDto> {
+  async create(data: CreateClientDto): Promise<RegenerateSecretResponseDto> {
+    const secret = crypto.randomUUID();
+
     const client = await this.prisma.client.create({
       data: {
         name: data.name,
         description: data.description,
         isActive: data.isActive ?? true,
+        secret,
       },
     });
 
-    return client as ClientDto;
+    return {
+      id: client.id,
+      name: client.name,
+      secret,
+      message:
+        'Client created successfully. Please save the secret securely as it will not be shown again.',
+    };
   }
 
   async update(id: string, data: UpdateClientDto): Promise<ClientDto> {
@@ -212,7 +222,7 @@ export class ClientService {
   /**
    * Regenerate the secret for a client
    */
-  async regenerateSecret(id: string): Promise<ClientDto> {
+  async regenerateSecret(id: string): Promise<RegenerateSecretResponseDto> {
     const existingClient = await this.prisma.client.findUnique({
       where: { id },
     });
@@ -221,13 +231,21 @@ export class ClientService {
       throw new NotFoundException(`Client with ID "${id}" not found`);
     }
 
+    const newSecret = crypto.randomUUID();
+
     const client = await this.prisma.client.update({
       where: { id },
       data: {
-        secret: crypto.randomUUID(),
+        secret: newSecret,
       },
     });
 
-    return client as ClientDto;
+    return {
+      id: client.id,
+      name: client.name,
+      secret: newSecret,
+      message:
+        'Secret regenerada con éxito. Por favor guárdela de forma segura ya que no se mostrará de nuevo.',
+    };
   }
 }

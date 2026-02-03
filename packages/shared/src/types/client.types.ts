@@ -28,10 +28,18 @@ export class CreateClientDto {
   @ApiProperty({ description: 'Client name', example: 'Acme Corporation', type: String })
   name!: string;
 
-  @ApiPropertyOptional({ description: 'Client description', example: 'Enterprise customer', type: String })
+  @ApiPropertyOptional({
+    description: 'Client description',
+    example: 'Enterprise customer',
+    type: String,
+  })
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Whether the client is active', default: true, type: Boolean })
+  @ApiPropertyOptional({
+    description: 'Whether the client is active',
+    default: true,
+    type: Boolean,
+  })
   isActive?: boolean;
 }
 
@@ -44,4 +52,18 @@ export class UpdateClientDto {
 
   @ApiPropertyOptional({ description: 'Whether the client is active', type: Boolean })
   isActive?: boolean;
+}
+
+export class RegenerateSecretResponseDto {
+  @ApiProperty({ description: 'Client ID', type: String })
+  id!: string;
+
+  @ApiProperty({ description: 'Client name', type: String })
+  name!: string;
+
+  @ApiProperty({ description: 'Newly generated secret (shown only once)', type: String })
+  secret!: string;
+
+  @ApiProperty({ description: 'Message to the user', type: String })
+  message!: string;
 }
