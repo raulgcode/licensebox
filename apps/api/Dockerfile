@@ -40,7 +40,8 @@ COPY apps/api ./apps/api
 # Generate Prisma client
 RUN pnpm --filter database db:generate:prod
 
-# Build shared package first, then API
+# Build all packages in dependency order: database, shared, then API
+RUN pnpm --filter database build
 RUN pnpm --filter shared build
 RUN pnpm --filter api build
 

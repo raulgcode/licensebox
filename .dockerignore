@@ -2,6 +2,7 @@
 node_modules
 .pnp
 .pnp.js
+**/node_modules
 
 # Build outputs
 dist
@@ -9,10 +10,18 @@ build
 .next
 out
 .turbo
+**/dist
+**/build
 
 # Testing
 coverage
 .nyc_output
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+**/test
+**/tests
 
 # Environment variables
 .env
@@ -56,3 +65,19 @@ docker-compose.override.yml
 
 # Database
 postgres_data
+# Mock service worker (not needed in production)
+**/mockServiceWorker.js
+public/mockServiceWorker.js
+
+# Fly.io config files
+fly.*.toml
+.fly
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# VSCode/Workspace files not needed in API build
+apps/web
+scripts
