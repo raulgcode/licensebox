@@ -31,7 +31,7 @@ export default defineConfig({
             provider: playwright(),
             // https://vitest.dev/config/browser/playwright
             instances: [{ browser: 'chromium', setupFiles: ['./vitest.browser.setup.ts'] }],
-            headless: false,
+            headless: process.env.CI === 'true',
           },
           include: ['**/*.browser.test.tsx'],
         },
