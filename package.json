@@ -6,6 +6,7 @@
   "main": "index.js",
   "scripts": {
     "setup": "node scripts/setup.js",
+    "fresh-install": "node scripts/fresh-install.js",
     "dev": "turbo run dev",
     "build": "turbo run build",
     "start": "turbo run start",

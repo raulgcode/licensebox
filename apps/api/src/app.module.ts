@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import {
+  ThrottlerModule,
+  ThrottlerGuard,
+  type ThrottlerModuleOptions,
+} from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -26,23 +30,26 @@ const envFilePath = existsSync(rootEnvPath) ? rootEnvPath : undefined;
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     // Rate limiting: Only apply in production
-    ThrottlerModule.forRootAsync({
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    (ThrottlerModule.forRootAsync as any)({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: (config: ConfigService): ThrottlerModuleOptions => {
         const isProduction = config.get('NODE_ENV') === 'production';
-        return [
-          {
-            name: 'short',
-            ttl: 60000, // 60 seconds
-            limit: isProduction ? 10 : 1000, // 10 in prod, 1000 in dev
-          },
-          {
-            name: 'long',
-            ttl: 60000 * 60, // 1 hour
-            limit: isProduction ? 100 : 10000, // 100 in prod, 10000 in dev
-          },
-        ];
+        return {
+          throttlers: [
+            {
+              name: 'short',
+              ttl: 60000, // 60 seconds
+              limit: isProduction ? 10 : 1000, // 10 in prod, 1000 in dev
+            },
+            {
+              name: 'long',
+              ttl: 60000 * 60, // 1 hour
+              limit: isProduction ? 100 : 10000, // 100 in prod, 10000 in dev
+            },
+          ],
+        };
       },
     }),
     AuthModule,

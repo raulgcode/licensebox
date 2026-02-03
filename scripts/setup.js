@@ -85,8 +85,8 @@ JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
 JWT_EXPIRES_IN="7d"
 
 # Admin User Configuration
-ADMIN_EMAIL="admin@licensebox.com"
-ADMIN_PASSWORD="change-this-secure-admin-password"
+ADMIN_EMAIL="armmandourbina@gmail.com"
+ADMIN_PASSWORD="Admin123!"
 `;
       writeFileSync(rootEnvPath, defaultEnvContent);
       log('✅ Created root .env file with default values', colors.green);
