@@ -16,6 +16,7 @@
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch",
+    "typecheck": "tsc --noEmit",
     "db:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "db:migrate:create": "dotenv -e ../../.env -- prisma migrate dev --create-only",
     "db:migrate:deploy": "prisma migrate deploy",

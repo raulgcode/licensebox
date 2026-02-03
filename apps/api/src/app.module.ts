@@ -30,8 +30,7 @@ const envFilePath = existsSync(rootEnvPath) ? rootEnvPath : undefined;
       ignoreEnvFile: process.env.NODE_ENV === 'production',
     }),
     // Rate limiting: Only apply in production
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    (ThrottlerModule.forRootAsync as any)({
+    ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService): ThrottlerModuleOptions => {
