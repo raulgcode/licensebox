@@ -53,11 +53,11 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter @licensebox/database db:generate:prod
 
-      - name: Install Playwright browsers
-        run: pnpm --filter web exec playwright install --with-deps chromium
-
       - name: Build packages
         run: pnpm build
+
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install --with-deps chromium
 
       - name: Run tests
         run: pnpm test
