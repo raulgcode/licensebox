@@ -2,6 +2,8 @@
 
 A modern license management system built with NestJS, React, and PostgreSQL.
 
+> **Status**: CI/CD Pipeline Active ✅
+
 ## 🚀 Quick Start
 
 Get up and running in 2 commands:
