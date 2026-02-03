@@ -54,7 +54,7 @@ jobs:
         run: pnpm --filter @licensebox/database db:generate:prod
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter web exec playwright install --with-deps chromium
 
       - name: Build packages
         run: pnpm build
