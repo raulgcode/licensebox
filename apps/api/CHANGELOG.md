@@ -1,3 +1,9 @@
+## [api-v1.2.0](https://github.com/raulgcode/licensebox/compare/api-v1.1.0...api-v1.2.0) (2026-02-04)
+
+### ✨ Features
+
+* simplify offline token generation and update user controller ESLint comments ([688db43](https://github.com/raulgcode/licensebox/commit/688db4324e68ae2c8c7006aff782fb7878526e6b))
+
 ## [api-v1.1.0](https://github.com/raulgcode/licensebox/compare/api-v1.0.0...api-v1.1.0) (2026-02-04)
 
 ### ✨ Features
