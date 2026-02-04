@@ -78,6 +78,5 @@ fly.*.toml
 .gitignore
 .gitattributes
 
-# VSCode/Workspace files not needed in API build
-apps/web
+# Scripts not needed in builds
 scripts
