@@ -1,8 +1,18 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { data, useLoaderData, Form, Link, useNavigation } from 'react-router';
+import { data, useLoaderData, Form, Link, useNavigation, useFetcher } from 'react-router';
 import { createAuthenticatedApi } from '@/lib/api';
 import type { ClientWithLicensesDto, LicenseDto } from '@licensebox/shared';
 import { isAxiosError } from 'axios';
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
   const api = await createAuthenticatedApi(request);
@@ -37,6 +47,26 @@ export async function action({ params, request }: ActionFunctionArgs) {
       const licenseId = formData.get('licenseId') as string;
       await api.delete(`/licenses/${licenseId}`);
       return data({ success: true, message: 'Licencia eliminada correctamente' });
+    }
+
+    if (intent === 'generate-offline-token') {
+      const licenseId = formData.get('licenseId') as string;
+      const response = await api.post<{ success: boolean; token?: string; message?: string }>(
+        '/licenses/offline/generate',
+        { licenseId },
+      );
+      if (response.data.success && response.data.token) {
+        return data({
+          success: true,
+          message: 'Token offline generado correctamente',
+          offlineToken: response.data.token,
+          licenseId,
+        });
+      }
+      return data({
+        success: false,
+        error: response.data.message || 'Error al generar token',
+      });
     }
   } catch (error) {
     if (isAxiosError(error)) {
@@ -112,7 +142,52 @@ function getLicenseCardStyles(
 export default function ClientLicensesPage() {
   const { client } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
+  const fetcher = useFetcher<{
+    success?: boolean;
+    offlineToken?: string;
+    licenseId?: string;
+    error?: string;
+  }>();
   const isSubmitting = navigation.state === 'submitting';
+
+  // State for offline token modal
+  const [tokenModalOpen, setTokenModalOpen] = useState(false);
+  const [currentToken, setCurrentToken] = useState<string | null>(null);
+  const [currentLicenseId, setCurrentLicenseId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // Handle fetcher response for offline token generation
+  useEffect(() => {
+    if (fetcher.data?.offlineToken) {
+      setCurrentToken(fetcher.data.offlineToken);
+      setTokenModalOpen(true);
+      setCopied(false);
+    }
+  }, [fetcher.data]);
+
+  const handleCopyToken = async () => {
+    if (currentToken) {
+      await navigator.clipboard.writeText(currentToken);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleShowExistingToken = (token: string, licenseId: string) => {
+    setCurrentToken(token);
+    setCurrentLicenseId(licenseId);
+    setTokenModalOpen(true);
+    setCopied(false);
+  };
+
+  const handleRegenerateToken = () => {
+    if (currentLicenseId) {
+      const formData = new FormData();
+      formData.append('intent', 'generate-offline-token');
+      formData.append('licenseId', currentLicenseId);
+      fetcher.submit(formData, { method: 'post' });
+    }
+  };
 
   const activeLicenses = client.licenses.filter((l) => l.isActive).length;
   const expiredLicenses = client.licenses.filter((l) => {
@@ -285,12 +360,18 @@ export default function ClientLicensesPage() {
                     </div>
 
                     {/* License Details Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                       <div className="bg-muted/30 rounded-lg p-3">
                         <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                           Producto
                         </dt>
                         <dd className="text-sm font-medium">{license.product}</dd>
+                      </div>
+                      <div className="bg-muted/30 rounded-lg p-3">
+                        <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                          Usuarios
+                        </dt>
+                        <dd className="text-sm font-medium">{license.maxUsers || 1}</dd>
                       </div>
                       <div className="bg-muted/30 rounded-lg p-3">
                         <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
@@ -317,10 +398,38 @@ export default function ClientLicensesPage() {
                         </dd>
                       </div>
                     </div>
+
+                    {/* Offline Token Status */}
+                    {license.offlineToken && (
+                      <div className="mt-4 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="h-3 w-3"
+                          >
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                          </svg>
+                          Token Offline Disponible
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleShowExistingToken(license.offlineToken!, license.id)}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          Ver Token
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions */}
-                  <div className="flex lg:flex-col gap-2 lg:min-w-[120px]">
+                  <div className="flex lg:flex-col gap-2 lg:min-w-30">
                     <Link
                       to={`/clients/${client.id}/licenses/${license.id}/edit`}
                       className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -339,6 +448,82 @@ export default function ClientLicensesPage() {
                       </svg>
                       Editar
                     </Link>
+
+                    {/* Generate/View Offline Token Button */}
+                    {license.offlineToken ? (
+                      <button
+                        type="button"
+                        onClick={() => handleShowExistingToken(license.offlineToken!, license.id)}
+                        className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50 transition-colors"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="h-4 w-4"
+                        >
+                          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                        </svg>
+                        Ver Token
+                      </button>
+                    ) : (
+                      <fetcher.Form method="post" className="flex-1 lg:flex-none">
+                        <input type="hidden" name="intent" value="generate-offline-token" />
+                        <input type="hidden" name="licenseId" value={license.id} />
+                        <button
+                          type="submit"
+                          disabled={fetcher.state === 'submitting'}
+                          className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50 transition-colors disabled:opacity-50"
+                        >
+                          {fetcher.state === 'submitting' ? (
+                            <>
+                              <svg
+                                className="animate-spin h-4 w-4"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                              >
+                                <circle
+                                  className="opacity-25"
+                                  cx="12"
+                                  cy="12"
+                                  r="10"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                ></circle>
+                                <path
+                                  className="opacity-75"
+                                  fill="currentColor"
+                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                ></path>
+                              </svg>
+                              Generando...
+                            </>
+                          ) : (
+                            <>
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="h-4 w-4"
+                              >
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                              </svg>
+                              Generar Token
+                            </>
+                          )}
+                        </button>
+                      </fetcher.Form>
+                    )}
+
                     <Form method="post" className="flex-1 lg:flex-none">
                       <input type="hidden" name="intent" value="toggle-active" />
                       <input type="hidden" name="licenseId" value={license.id} />
@@ -504,6 +689,154 @@ export default function ClientLicensesPage() {
           </div>
         </div>
       )}
+
+      {/* Offline Token Modal */}
+      <Dialog open={tokenModalOpen} onOpenChange={setTokenModalOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5 text-purple-600"
+              >
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+              </svg>
+              Token de Licencia Offline
+            </DialogTitle>
+            <DialogDescription>
+              Copia este token y pégalo en tu aplicación .NET para validar la licencia sin conexión
+              a internet.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Token Display */}
+            <div className="relative">
+              <div className="bg-muted rounded-lg p-4 max-h-48 overflow-auto">
+                <code className="text-xs font-mono break-all whitespace-pre-wrap">
+                  {currentToken}
+                </code>
+              </div>
+            </div>
+
+            {/* Instructions */}
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
+                Instrucciones de uso:
+              </h4>
+              <ol className="text-sm text-blue-700 dark:text-blue-400 space-y-1 list-decimal list-inside">
+                <li>Copia el token completo usando el botón de abajo</li>
+                <li>En tu aplicación .NET, guarda este token en la configuración</li>
+                <li>Usa el validador de licencias para verificar el token localmente</li>
+                <li>
+                  El token contiene: empresa, producto, usuarios máximos y fecha de expiración
+                </li>
+              </ol>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 flex-wrap">
+            <Button variant="outline" onClick={() => setTokenModalOpen(false)}>
+              Cerrar
+            </Button>
+            {currentLicenseId && (
+              <Button
+                variant="outline"
+                onClick={handleRegenerateToken}
+                disabled={fetcher.state === 'submitting'}
+                className="gap-2"
+              >
+                {fetcher.state === 'submitting' ? (
+                  <>
+                    <svg
+                      className="animate-spin h-4 w-4"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    Regenerando...
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-4 w-4"
+                    >
+                      <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                      <path d="M3 3v5h5" />
+                      <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                      <path d="M16 16h5v5" />
+                    </svg>
+                    Regenerar Token
+                  </>
+                )}
+              </Button>
+            )}
+            <Button onClick={handleCopyToken} className="gap-2">
+              {copied ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                  >
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                  ¡Copiado!
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                  >
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                  </svg>
+                  Copiar Token
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -29,6 +29,10 @@ const schema = z.object({
     .string({ required_error: 'El producto es obligatorio' })
     .min(1, { message: 'El producto es obligatorio' }),
   machineId: z.string().optional(),
+  maxUsers: z.preprocess(
+    (val) => (val === '' || val === undefined ? 1 : Number(val)),
+    z.number().min(1, { message: 'Debe ser al menos 1 usuario' }).default(1),
+  ),
   expiresAt: z.string().optional(),
   isActive: z.preprocess((val) => val === 'on' || val === true, z.boolean().default(true)),
 });
@@ -57,13 +61,14 @@ export async function action({ params, request }: ActionFunctionArgs) {
     return submission.reply();
   }
 
-  const { key, product, machineId, expiresAt, isActive } = submission.value;
+  const { key, product, machineId, maxUsers, expiresAt, isActive } = submission.value;
 
   try {
     await api.put(`/licenses/${params.licenseId}`, {
       key: key.trim(),
       product: product.trim(),
       machineId: machineId?.trim() || null,
+      maxUsers,
       expiresAt: expiresAt || null,
       isActive,
     });
@@ -95,6 +100,7 @@ export default function EditLicensePage() {
       key: license.key,
       product: license.product,
       machineId: license.machineId || '',
+      maxUsers: license.maxUsers || 1,
       expiresAt: formatDateForInput(license.expiresAt),
       isActive: license.isActive,
     },
@@ -176,6 +182,24 @@ export default function EditLicensePage() {
                   className="h-11"
                 />
                 {fields.product.errors && <ErrorList errors={{ product: fields.product.errors }} />}
+              </Field>
+
+              <Field>
+                <FieldLabel htmlFor={fields.maxUsers.id}>Máximo de Usuarios *</FieldLabel>
+                <Input
+                  {...getInputProps(fields.maxUsers, { type: 'number' })}
+                  key={fields.maxUsers.key}
+                  defaultValue={fields.maxUsers.initialValue}
+                  min={1}
+                  placeholder="Número máximo de usuarios"
+                  className="h-11"
+                />
+                <FieldDescription>
+                  Cantidad máxima de usuarios que pueden usar esta licencia.
+                </FieldDescription>
+                {fields.maxUsers.errors && (
+                  <ErrorList errors={{ maxUsers: fields.maxUsers.errors }} />
+                )}
               </Field>
 
               <Field>

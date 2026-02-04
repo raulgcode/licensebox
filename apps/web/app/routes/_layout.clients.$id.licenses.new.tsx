@@ -34,8 +34,13 @@ const schema = z.object({
     .string({ required_error: 'El producto es obligatorio' })
     .min(1, { message: 'El producto es obligatorio' }),
   machineId: z.string().optional(),
+  maxUsers: z.preprocess(
+    (val) => (val === '' || val === undefined ? 1 : Number(val)),
+    z.number().min(1, { message: 'Debe ser al menos 1 usuario' }).default(1),
+  ),
   expiresAt: z.string().optional(),
   isActive: z.preprocess((val) => val === 'on' || val === true, z.boolean().default(true)),
+  generateOfflineToken: z.preprocess((val) => val === 'on' || val === true, z.boolean().default(false)),
 });
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -54,7 +59,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
     return submission.reply();
   }
 
-  const { key, product, machineId, expiresAt, isActive } = submission.value;
+  const { key, product, machineId, maxUsers, expiresAt, isActive, generateOfflineToken } = submission.value;
 
   try {
     await api.post('/licenses', {
@@ -62,8 +67,10 @@ export async function action({ params, request }: ActionFunctionArgs) {
       product: product.trim(),
       clientId: params.id,
       machineId: machineId?.trim() || null,
+      maxUsers,
       expiresAt: expiresAt || null,
       isActive,
+      generateOfflineToken,
     });
     return redirect(`/clients/${params.id}/licenses`);
   } catch (error) {
@@ -91,7 +98,9 @@ export default function NewLicensePage() {
     id: 'new-license-form',
     defaultValue: {
       key: suggestedKey,
+      maxUsers: 1,
       isActive: true,
+      generateOfflineToken: true,
     },
   });
 
@@ -176,6 +185,22 @@ export default function NewLicensePage() {
               </Field>
 
               <Field>
+                <FieldLabel htmlFor={fields.maxUsers.id}>Máximo de Usuarios *</FieldLabel>
+                <Input
+                  {...getInputProps(fields.maxUsers, { type: 'number' })}
+                  min={1}
+                  placeholder="Número máximo de usuarios"
+                  className="h-11"
+                />
+                <FieldDescription>
+                  Cantidad máxima de usuarios que pueden usar esta licencia.
+                </FieldDescription>
+                {fields.maxUsers.errors && (
+                  <ErrorList errors={{ maxUsers: fields.maxUsers.errors }} />
+                )}
+              </Field>
+
+              <Field>
                 <FieldLabel htmlFor={fields.machineId.id}>ID de Máquina</FieldLabel>
                 <Input
                   {...getInputProps(fields.machineId, { type: 'text' })}
@@ -213,6 +238,25 @@ export default function NewLicensePage() {
                   />
                   <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                   <span className="ms-3 text-sm font-medium">Licencia activa</span>
+                </label>
+              </Field>
+
+              <Field orientation="horizontal">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    id={fields.generateOfflineToken.id}
+                    name={fields.generateOfflineToken.name}
+                    defaultChecked
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-muted peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                  <div className="ms-3">
+                    <span className="text-sm font-medium">Generar token offline</span>
+                    <p className="text-xs text-muted-foreground">
+                      Genera una licencia self-contained para uso sin conexión a internet
+                    </p>
+                  </div>
                 </label>
               </Field>
 

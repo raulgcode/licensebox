@@ -6,8 +6,9 @@
  */
 
 import { execSync } from 'child_process';
-import { existsSync, copyFileSync, writeFileSync } from 'fs';
+import { existsSync, copyFileSync, writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { generateKeyPairSync } from 'crypto';
 
 const colors = {
   reset: '\x1b[0m',
@@ -178,6 +179,55 @@ function setupDatabase() {
   log('✅ Database schema setup complete', colors.green);
 }
 
+function generateLicenseKeys() {
+  log('\n🔐 Generating RSA license keys...', colors.blue);
+
+  const keysDir = join(process.cwd(), 'apps', 'api', 'keys');
+  const privateKeyPath = join(keysDir, 'license-private.pem');
+  const publicKeyPath = join(keysDir, 'license-public.pem');
+
+  // Check if keys already exist
+  if (existsSync(privateKeyPath) && existsSync(publicKeyPath)) {
+    log('⚠️  License keys already exist, skipping...', colors.yellow);
+    log('   To regenerate, delete the keys folder: apps/api/keys/', colors.yellow);
+    return;
+  }
+
+  // Create keys directory if it doesn't exist
+  if (!existsSync(keysDir)) {
+    mkdirSync(keysDir, { recursive: true });
+  }
+
+  try {
+    // Generate RSA key pair
+    const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem',
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem',
+      },
+    });
+
+    // Write keys to files
+    writeFileSync(privateKeyPath, privateKey, { mode: 0o600 });
+    writeFileSync(publicKeyPath, publicKey, { mode: 0o644 });
+
+    log('✅ Generated RSA license keys (2048-bit)', colors.green);
+    log(`   Private key: ${privateKeyPath}`, colors.yellow);
+    log(`   Public key: ${publicKeyPath}`, colors.yellow);
+    log('', colors.reset);
+    log('⚠️  IMPORTANT: Never commit the private key to version control!', colors.red);
+    log('   The keys folder is already in .gitignore', colors.yellow);
+  } catch (error) {
+    log(`❌ Failed to generate license keys: ${error.message}`, colors.red);
+    process.exit(1);
+  }
+}
+
 async function main() {
   log('\n╔═══════════════════════════════════════╗', colors.blue);
   log('║   🚀 LicenseBox Setup Script 🚀      ║', colors.blue);
@@ -186,6 +236,7 @@ async function main() {
   try {
     checkDocker();
     setupEnvironmentFiles();
+    generateLicenseKeys();
     installDependencies();
     startDatabase();
     setupDatabase();
