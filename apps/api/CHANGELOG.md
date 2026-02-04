@@ -1,3 +1,9 @@
+## [api-v1.1.0](https://github.com/raulgcode/licensebox/compare/api-v1.0.0...api-v1.1.0) (2026-02-04)
+
+### ✨ Features
+
+* **api:** add offline license generation and verification ([8e16fe2](https://github.com/raulgcode/licensebox/commit/8e16fe21f8121d6c3bda170689cc0e9f0e83fb4d))
+
 ## api-v1.0.0 (2026-02-03)
 
 ### ✨ Features
