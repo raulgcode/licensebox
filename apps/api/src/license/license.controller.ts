@@ -17,7 +17,7 @@ import {
 } from '@nestjs/swagger';
 import { LicenseService } from './license.service';
 import { Public } from '../auth/decorators/public.decorator';
-import {
+import type {
   LicenseDto,
   LicenseWithClientDto,
   CreateLicenseDto,
@@ -157,9 +157,9 @@ export class LicenseController {
     status: 200,
     description: 'Token verification result',
   })
-  async verifyOfflineToken(
+  verifyOfflineToken(
     @Body() data: VerifyOfflineTokenDto,
-  ): Promise<VerifyOfflineTokenResponseDto> {
+  ): VerifyOfflineTokenResponseDto {
     return this.licenseService.verifyOfflineToken(data.token);
   }
 

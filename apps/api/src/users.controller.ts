@@ -7,7 +7,7 @@ export class UsersController {
 
   @Get()
   getAllUsers() {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return (this.prisma as any).user.findMany({
       include: {
         licenses: true,
@@ -17,7 +17,7 @@ export class UsersController {
 
   @Post()
   createUser(@Body() data: { email: string; name?: string }) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return (this.prisma as any).user.create({
       data,
     });

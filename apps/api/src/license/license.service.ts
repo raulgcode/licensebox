@@ -170,7 +170,7 @@ export class LicenseService {
 
     // Generate offline token if requested
     if (data.generateOfflineToken) {
-      const offlineToken = await this.generateOfflineTokenForLicense(
+      const offlineToken = this.generateOfflineTokenForLicense(
         license.id,
         license.key,
         data.product,
@@ -195,7 +195,7 @@ export class LicenseService {
   /**
    * Generate an offline license token for a given license
    */
-  private async generateOfflineTokenForLicense(
+  private generateOfflineTokenForLicense(
     licenseId: string,
     licenseKey: string,
     product: string,
@@ -203,7 +203,7 @@ export class LicenseService {
     companyName: string,
     maxUsers: number,
     expiresAt: Date | null,
-  ): Promise<string> {
+  ): string {
     const payload: OfflineLicensePayload = {
       code: clientCode,
       companyName,
@@ -285,7 +285,7 @@ export class LicenseService {
       });
 
       if (client) {
-        const offlineToken = await this.generateOfflineTokenForLicense(
+        const offlineToken = this.generateOfflineTokenForLicense(
           license.id,
           license.key,
           license.product,
@@ -504,7 +504,7 @@ export class LicenseService {
       };
     }
 
-    const offlineToken = await this.generateOfflineTokenForLicense(
+    const offlineToken = this.generateOfflineTokenForLicense(
       license.id,
       license.key,
       license.product,
