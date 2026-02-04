@@ -26,13 +26,22 @@ import {
   ValidateLicenseResponseDto,
   ActivateLicenseDto,
   ActivateLicenseResponseDto,
+  GenerateOfflineTokenDto,
+  GenerateOfflineTokenResponseDto,
+  VerifyOfflineTokenDto,
+  VerifyOfflineTokenResponseDto,
 } from '@licensebox/shared';
+import type { PublicKeyResponseDto } from '@licensebox/shared';
 
 @ApiTags('licenses')
 @ApiBearerAuth('JWT-auth')
 @Controller('licenses')
 export class LicenseController {
   constructor(private readonly licenseService: LicenseService) {}
+
+  // ============================================
+  // Static routes MUST come before dynamic routes
+  // ============================================
 
   /**
    * Get all licenses
@@ -106,6 +115,87 @@ export class LicenseController {
     );
   }
 
+  // ============================================
+  // Offline License Endpoints (static paths - before dynamic)
+  // ============================================
+
+  /**
+   * Generate an offline license token for a license
+   * This token can be validated client-side without server connection
+   */
+  @Post('offline/generate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Generate offline license token',
+    description:
+      'Generate a self-contained license token that can be validated offline using the public key.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Offline token generated successfully',
+  })
+  @ApiResponse({ status: 404, description: 'License not found' })
+  async generateOfflineToken(
+    @Body() data: GenerateOfflineTokenDto,
+  ): Promise<GenerateOfflineTokenResponseDto> {
+    return this.licenseService.generateOfflineToken(data.licenseId);
+  }
+
+  /**
+   * Verify an offline license token (public endpoint)
+   * Clients can also do this locally with just the public key
+   */
+  @Public()
+  @Post('offline/verify')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Verify offline license token',
+    description:
+      'Verify a self-contained license token. This can also be done client-side with the public key.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Token verification result',
+  })
+  async verifyOfflineToken(
+    @Body() data: VerifyOfflineTokenDto,
+  ): Promise<VerifyOfflineTokenResponseDto> {
+    return this.licenseService.verifyOfflineToken(data.token);
+  }
+
+  /**
+   * Get the public key for client-side offline verification
+   */
+  @Public()
+  @Get('offline/public-key')
+  @ApiOperation({
+    summary: 'Get public key for offline verification',
+    description:
+      'Get the public key needed to verify offline license tokens client-side. Embed this in your .NET application.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Public key for verification',
+  })
+  getPublicKey(): PublicKeyResponseDto {
+    return this.licenseService.getPublicKey();
+  }
+
+  // ============================================
+  // Dynamic routes (with :id or :key parameters)
+  // ============================================
+
+  /**
+   * Create a new license
+   */
+  @Post()
+  @ApiOperation({ summary: 'Create a new license' })
+  @ApiResponse({ status: 201, description: 'License created successfully' })
+  @ApiResponse({ status: 409, description: 'License key already exists' })
+  async create(@Body() data: CreateLicenseDto): Promise<LicenseDto> {
+    return this.licenseService.create(data);
+  }
+
   /**
    * Deactivate a license (remove machine binding) - requires auth
    */
@@ -132,17 +222,6 @@ export class LicenseController {
   @ApiResponse({ status: 404, description: 'License not found' })
   async findOne(@Param('id') id: string): Promise<LicenseWithClientDto> {
     return this.licenseService.findOne(id);
-  }
-
-  /**
-   * Create a new license
-   */
-  @Post()
-  @ApiOperation({ summary: 'Create a new license' })
-  @ApiResponse({ status: 201, description: 'License created successfully' })
-  @ApiResponse({ status: 409, description: 'License key already exists' })
-  async create(@Body() data: CreateLicenseDto): Promise<LicenseDto> {
-    return this.licenseService.create(data);
   }
 
   /**

@@ -39,16 +39,18 @@ model Client {
 
 // License model
 model License {
-  id        String    @id @default(uuid())
-  key       String    @unique
-  product   String
-  clientId  String
-  client    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  machineId String? // Optional machine identifier for license binding
-  expiresAt DateTime?
-  isActive  Boolean   @default(true)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(uuid())
+  key          String    @unique
+  product      String
+  clientId     String
+  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  machineId    String? // Optional machine identifier for license binding
+  maxUsers     Int       @default(1) // Maximum number of users allowed for this license
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+  offlineToken String?   @db.Text // Self-contained license token for offline validation
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@map("licenses")
 }

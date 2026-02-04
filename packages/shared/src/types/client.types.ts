@@ -17,8 +17,10 @@ export interface ClientWithLicensesDto extends ClientDto {
     key: string;
     product: string;
     machineId: string | null;
+    maxUsers: number;
     isActive: boolean;
     expiresAt: Date | null;
+    offlineToken: string | null;
     createdAt: Date;
     updatedAt: Date;
   }[];

@@ -56,3 +56,9 @@ docker-compose.override.yml
 
 # Database
 postgres_data
+# License Keys (CRITICAL - NEVER COMMIT)
+**/keys/*.pem
+**/keys/
+*.pem
+license-private.pem
+license-public.pem

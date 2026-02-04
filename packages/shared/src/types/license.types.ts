@@ -7,8 +7,10 @@ export interface LicenseDto {
   product: string;
   clientId: string;
   machineId: string | null;
+  maxUsers: number;
   expiresAt: Date | null;
   isActive: boolean;
+  offlineToken: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,14 +35,41 @@ export class CreateLicenseDto {
   @ApiProperty({ description: 'Client ID', example: 'uuid-of-client', type: String })
   clientId!: string;
 
-  @ApiPropertyOptional({ description: 'Machine ID for binding', example: 'machine-fingerprint', type: String })
+  @ApiPropertyOptional({
+    description: 'Machine ID for binding',
+    example: 'machine-fingerprint',
+    type: String,
+  })
   machineId?: string;
 
-  @ApiPropertyOptional({ description: 'Expiration date', example: '2026-12-31T00:00:00.000Z', type: String })
+  @ApiPropertyOptional({
+    description: 'Maximum number of users',
+    example: 10,
+    default: 1,
+    type: Number,
+  })
+  maxUsers?: number;
+
+  @ApiPropertyOptional({
+    description: 'Expiration date',
+    example: '2026-12-31T00:00:00.000Z',
+    type: String,
+  })
   expiresAt?: Date | string;
 
-  @ApiPropertyOptional({ description: 'Whether the license is active', default: true, type: Boolean })
+  @ApiPropertyOptional({
+    description: 'Whether the license is active',
+    default: true,
+    type: Boolean,
+  })
   isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'Generate offline token for self-contained validation',
+    default: false,
+    type: Boolean,
+  })
+  generateOfflineToken?: boolean;
 }
 
 export class UpdateLicenseDto {
@@ -56,11 +85,17 @@ export class UpdateLicenseDto {
   @ApiPropertyOptional({ description: 'Machine ID for binding', type: String, nullable: true })
   machineId?: string | null;
 
+  @ApiPropertyOptional({ description: 'Maximum number of users', type: Number })
+  maxUsers?: number;
+
   @ApiPropertyOptional({ description: 'Expiration date', type: String, nullable: true })
   expiresAt?: Date | string | null;
 
   @ApiPropertyOptional({ description: 'Whether the license is active', type: Boolean })
   isActive?: boolean;
+
+  @ApiPropertyOptional({ description: 'Regenerate offline token', default: false, type: Boolean })
+  regenerateOfflineToken?: boolean;
 }
 
 export class ValidateLicenseDto {
@@ -119,4 +154,82 @@ export interface ActivateLicenseResponseDto {
   success: boolean;
   license?: LicenseDto;
   message?: string;
+}
+
+// ============================================
+// Offline License Types (Self-Contained)
+// ============================================
+
+/**
+ * Payload structure for offline license validation
+ * This data is signed and can be verified without server connection
+ */
+export interface OfflineLicensePayload {
+  /** Client code identifier */
+  code: string;
+  /** Company/Client name */
+  companyName: string;
+  /** Product name */
+  product: string;
+  /** Maximum number of users allowed */
+  maxUsers: number;
+  /** License expiration date (ISO 8601 string) */
+  expiresAt: string | null;
+  /** License issue date (ISO 8601 string) */
+  issuedAt: string;
+  /** Unique license identifier */
+  licenseId: string;
+  /** License key */
+  licenseKey: string;
+}
+
+/**
+ * Complete offline license token structure
+ */
+export interface OfflineLicenseToken {
+  /** License data payload */
+  data: OfflineLicensePayload;
+  /** RSA signature of the data (base64) */
+  signature: string;
+  /** Algorithm used for signing */
+  algorithm: string;
+  /** Version of the token format */
+  version: number;
+}
+
+export class GenerateOfflineTokenDto {
+  @ApiProperty({
+    description: 'The license ID to generate offline token for',
+    example: 'uuid-of-license',
+    type: String,
+  })
+  licenseId!: string;
+}
+
+export class VerifyOfflineTokenDto {
+  @ApiProperty({
+    description: 'The offline license token (base64 encoded)',
+    example: 'eyJkYXRhIjp7ImNvZGUiOiJDTEkwMDEiLC...',
+    type: String,
+  })
+  token!: string;
+}
+
+export interface VerifyOfflineTokenResponseDto {
+  valid: boolean;
+  expired: boolean;
+  payload?: OfflineLicensePayload;
+  message: string;
+}
+
+export interface GenerateOfflineTokenResponseDto {
+  success: boolean;
+  token?: string;
+  message?: string;
+}
+
+export interface PublicKeyResponseDto {
+  publicKey: string;
+  algorithm: string;
+  format: string;
 }

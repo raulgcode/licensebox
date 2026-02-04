@@ -11,11 +11,19 @@ import {
   UpdateLicenseDto,
   ValidateLicenseResponseDto,
   ActivateLicenseResponseDto,
+  GenerateOfflineTokenResponseDto,
+  VerifyOfflineTokenResponseDto,
+  PublicKeyResponseDto,
+  OfflineLicensePayload,
 } from '@licensebox/shared';
+import { CryptoService } from './crypto.service';
 
 @Injectable()
 export class LicenseService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cryptoService: CryptoService,
+  ) {}
 
   /**
    * Deactivate all licenses that have expired
@@ -142,25 +150,72 @@ export class LicenseService {
 
     // Check if the expiration date is in the past - if so, force isActive to false
     let isActive = data.isActive ?? true;
-    if (data.expiresAt) {
-      const expiresAt = new Date(data.expiresAt);
-      if (expiresAt < new Date()) {
-        isActive = false;
-      }
+    const expiresAtDate = data.expiresAt ? new Date(data.expiresAt) : null;
+    if (expiresAtDate && expiresAtDate < new Date()) {
+      isActive = false;
     }
 
+    // Create the license first
     const license = await this.prisma.license.create({
       data: {
         key: data.key,
         product: data.product,
         clientId: data.clientId,
         machineId: data.machineId || null,
-        expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+        maxUsers: data.maxUsers ?? 1,
+        expiresAt: expiresAtDate,
         isActive,
       },
     });
 
+    // Generate offline token if requested
+    if (data.generateOfflineToken) {
+      const offlineToken = await this.generateOfflineTokenForLicense(
+        license.id,
+        license.key,
+        data.product,
+        client.id,
+        client.name,
+        data.maxUsers ?? 1,
+        expiresAtDate,
+      );
+
+      // Update license with the token
+      const updatedLicense = await this.prisma.license.update({
+        where: { id: license.id },
+        data: { offlineToken },
+      });
+
+      return updatedLicense as LicenseDto;
+    }
+
     return license as LicenseDto;
+  }
+
+  /**
+   * Generate an offline license token for a given license
+   */
+  private async generateOfflineTokenForLicense(
+    licenseId: string,
+    licenseKey: string,
+    product: string,
+    clientCode: string,
+    companyName: string,
+    maxUsers: number,
+    expiresAt: Date | null,
+  ): Promise<string> {
+    const payload: OfflineLicensePayload = {
+      code: clientCode,
+      companyName,
+      product,
+      maxUsers,
+      expiresAt: expiresAt ? expiresAt.toISOString() : null,
+      issuedAt: new Date().toISOString(),
+      licenseId,
+      licenseKey,
+    };
+
+    return this.cryptoService.generateOfflineLicenseToken(payload);
   }
 
   async update(id: string, data: UpdateLicenseDto): Promise<LicenseDto> {
@@ -215,12 +270,39 @@ export class LicenseService {
         ...(data.product !== undefined && { product: data.product }),
         ...(data.clientId !== undefined && { clientId: data.clientId }),
         ...(data.machineId !== undefined && { machineId: data.machineId }),
+        ...(data.maxUsers !== undefined && { maxUsers: data.maxUsers }),
         ...(data.expiresAt !== undefined && {
           expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
         }),
         ...(isActive !== undefined && { isActive }),
       },
     });
+
+    // Regenerate offline token if requested
+    if (data.regenerateOfflineToken) {
+      const client = await this.prisma.client.findUnique({
+        where: { id: license.clientId },
+      });
+
+      if (client) {
+        const offlineToken = await this.generateOfflineTokenForLicense(
+          license.id,
+          license.key,
+          license.product,
+          client.id,
+          client.name,
+          license.maxUsers,
+          license.expiresAt,
+        );
+
+        const updatedLicense = await this.prisma.license.update({
+          where: { id: license.id },
+          data: { offlineToken },
+        });
+
+        return updatedLicense as LicenseDto;
+      }
+    }
 
     return license as LicenseDto;
   }
@@ -388,6 +470,95 @@ export class LicenseService {
       success: true,
       license: updatedLicense as LicenseDto,
       message: 'License successfully deactivated',
+    };
+  }
+
+  // ============================================
+  // Offline License Methods
+  // ============================================
+
+  /**
+   * Generate an offline token for an existing license
+   */
+  async generateOfflineToken(
+    licenseId: string,
+  ): Promise<GenerateOfflineTokenResponseDto> {
+    const license = await this.prisma.license.findUnique({
+      where: { id: licenseId },
+      include: {
+        client: true,
+      },
+    });
+
+    if (!license) {
+      return {
+        success: false,
+        message: 'License not found',
+      };
+    }
+
+    if (!license.isActive) {
+      return {
+        success: false,
+        message: 'License is inactive',
+      };
+    }
+
+    const offlineToken = await this.generateOfflineTokenForLicense(
+      license.id,
+      license.key,
+      license.product,
+      license.client.id,
+      license.client.name,
+      license.maxUsers,
+      license.expiresAt,
+    );
+
+    // Update license with the token
+    await this.prisma.license.update({
+      where: { id: licenseId },
+      data: { offlineToken },
+    });
+
+    return {
+      success: true,
+      token: offlineToken,
+      message: 'Offline token generated successfully',
+    };
+  }
+
+  /**
+   * Verify an offline license token (public endpoint)
+   * This can also be done client-side with just the public key
+   */
+  verifyOfflineToken(token: string): VerifyOfflineTokenResponseDto {
+    try {
+      const payload = this.cryptoService.verifyOfflineLicenseToken(token);
+      const validation = this.cryptoService.validateLicensePayload(payload);
+
+      return {
+        valid: validation.valid,
+        expired: validation.expired,
+        payload,
+        message: validation.message,
+      };
+    } catch (error) {
+      return {
+        valid: false,
+        expired: false,
+        message: error instanceof Error ? error.message : 'Verification failed',
+      };
+    }
+  }
+
+  /**
+   * Get the public key for client-side verification
+   */
+  getPublicKey(): PublicKeyResponseDto {
+    return {
+      publicKey: this.cryptoService.getPublicKey(),
+      algorithm: 'RSA-SHA256',
+      format: 'PEM (SPKI)',
     };
   }
 }
