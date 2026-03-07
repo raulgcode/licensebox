@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
 import { data, useLoaderData, Form, Link, useNavigation, useFetcher } from 'react-router';
-import { createAuthenticatedApi } from '@/lib/api';
-import type { ClientWithLicensesDto, LicenseDto } from '@licensebox/shared';
+import { createAuthenticatedApi, api } from '@/lib/api';
+import type { ClientWithLicensesDto, LicenseDto, PublicKeyResponseDto } from '@licensebox/shared';
 import { isAxiosError } from 'axios';
 import { useState, useEffect } from 'react';
 import {
@@ -15,11 +15,12 @@ import {
 import { Button } from '@/components/ui/button';
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
-  const api = await createAuthenticatedApi(request);
-  const { data: client } = await api.get<ClientWithLicensesDto>(
-    `/clients/${params.id}?includeLicenses=true`,
-  );
-  return data({ client });
+  const authApi = await createAuthenticatedApi(request);
+  const [{ data: client }, { data: publicKeyData }] = await Promise.all([
+    authApi.get<ClientWithLicensesDto>(`/clients/${params.id}?includeLicenses=true`),
+    api.get<PublicKeyResponseDto>('/licenses/offline/public-key'),
+  ]);
+  return data({ client, publicKey: publicKeyData.publicKey });
 }
 
 export async function action({ params, request }: ActionFunctionArgs) {
@@ -140,7 +141,7 @@ function getLicenseCardStyles(
 }
 
 export default function ClientLicensesPage() {
-  const { client } = useLoaderData<typeof loader>();
+  const { client, publicKey } = useLoaderData<typeof loader>();
   const navigation = useNavigation();
   const fetcher = useFetcher<{
     success?: boolean;
@@ -154,30 +155,37 @@ export default function ClientLicensesPage() {
   const [tokenModalOpen, setTokenModalOpen] = useState(false);
   const [currentToken, setCurrentToken] = useState<string | null>(null);
   const [currentLicenseId, setCurrentLicenseId] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [currentLicenseKey, setCurrentLicenseKey] = useState<string | null>(null);
+  const [copiedToken, setCopiedToken] = useState(false);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedPublicKey, setCopiedPublicKey] = useState(false);
 
   // Handle fetcher response for offline token generation
   useEffect(() => {
     if (fetcher.data?.offlineToken) {
       setCurrentToken(fetcher.data.offlineToken);
+      if (fetcher.data.licenseId) {
+        setCurrentLicenseId(fetcher.data.licenseId);
+        const license = client.licenses.find((l) => l.id === fetcher.data!.licenseId);
+        if (license) setCurrentLicenseKey(license.key);
+      }
       setTokenModalOpen(true);
-      setCopied(false);
+      setCopiedToken(false);
     }
-  }, [fetcher.data]);
+  }, [fetcher.data, client.licenses]);
 
-  const handleCopyToken = async () => {
-    if (currentToken) {
-      await navigator.clipboard.writeText(currentToken);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
+  const copyToClipboard = async (text: string, setter: (v: boolean) => void) => {
+    await navigator.clipboard.writeText(text);
+    setter(true);
+    setTimeout(() => setter(false), 2000);
   };
 
-  const handleShowExistingToken = (token: string, licenseId: string) => {
+  const handleShowExistingToken = (token: string, licenseId: string, licenseKey: string) => {
     setCurrentToken(token);
     setCurrentLicenseId(licenseId);
+    setCurrentLicenseKey(licenseKey);
     setTokenModalOpen(true);
-    setCopied(false);
+    setCopiedToken(false);
   };
 
   const handleRegenerateToken = () => {
@@ -360,7 +368,15 @@ export default function ClientLicensesPage() {
                     </div>
 
                     {/* License Details Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                      <div className="bg-muted/30 rounded-lg p-3 col-span-2 md:col-span-3 lg:col-span-1">
+                        <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                          ID
+                        </dt>
+                        <dd className="text-xs font-mono truncate" title={license.id}>
+                          {license.id}
+                        </dd>
+                      </div>
                       <div className="bg-muted/30 rounded-lg p-3">
                         <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
                           Producto
@@ -419,7 +435,7 @@ export default function ClientLicensesPage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleShowExistingToken(license.offlineToken!, license.id)}
+                          onClick={() => handleShowExistingToken(license.offlineToken!, license.id, license.key)}
                           className="text-xs text-primary hover:underline"
                         >
                           Ver Token
@@ -453,7 +469,7 @@ export default function ClientLicensesPage() {
                     {license.offlineToken ? (
                       <button
                         type="button"
-                        onClick={() => handleShowExistingToken(license.offlineToken!, license.id)}
+                        onClick={() => handleShowExistingToken(license.offlineToken!, license.id, license.key)}
                         className="flex-1 lg:flex-none inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 dark:border-purple-900 dark:bg-purple-950/30 dark:text-purple-400 dark:hover:bg-purple-950/50 transition-colors"
                       >
                         <svg
@@ -692,56 +708,134 @@ export default function ClientLicensesPage() {
 
       {/* Offline Token Modal */}
       <Dialog open={tokenModalOpen} onOpenChange={setTokenModalOpen}>
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="h-5 w-5 text-purple-600"
-              >
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
-              </svg>
+            <DialogTitle className="flex items-center gap-2 text-lg">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 text-purple-600">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10" />
+                </svg>
+              </span>
               Token de Licencia Offline
             </DialogTitle>
             <DialogDescription>
-              Copia este token y pégalo en tu aplicación .NET para validar la licencia sin conexión
-              a internet.
+              Todos los datos necesarios para validar la licencia sin conexión a internet.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
-            {/* Token Display */}
-            <div className="relative">
-              <div className="bg-muted rounded-lg p-4 max-h-48 overflow-auto">
-                <code className="text-xs font-mono break-all whitespace-pre-wrap">
-                  {currentToken}
-                </code>
+          <div className="space-y-4 py-1">
+            {/* License metadata */}
+            {(currentLicenseId || currentLicenseKey) && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {currentLicenseId && (
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">License ID</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs font-mono truncate flex-1 text-foreground">{currentLicenseId}</code>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(currentLicenseId, setCopiedKey)}
+                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Copiar ID"
+                      >
+                        {copiedKey ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-green-500"><polyline points="20 6 9 17 4 12" /></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {currentLicenseKey && (
+                  <div className="rounded-lg border bg-muted/30 p-3">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">License Key</p>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs font-mono truncate flex-1 text-foreground">{currentLicenseKey}</code>
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(currentLicenseKey, setCopiedPublicKey)}
+                        className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                        title="Copiar Key"
+                      >
+                        {copiedPublicKey ? (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-green-500"><polyline points="20 6 9 17 4 12" /></svg>
+                        ) : (
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Offline Token */}
+            <div className="rounded-lg border bg-muted/30 p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Token Offline</p>
+                <button
+                  type="button"
+                  onClick={() => currentToken && copyToClipboard(currentToken, setCopiedToken)}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {copiedToken ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-green-500"><polyline points="20 6 9 17 4 12" /></svg>
+                      <span className="text-green-600">¡Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                      Copiar
+                    </>
+                  )}
+                </button>
+              </div>
+              <div className="bg-muted rounded-md p-3 max-h-32 overflow-auto">
+                <code className="text-xs font-mono break-all whitespace-pre-wrap text-foreground">{currentToken}</code>
               </div>
             </div>
 
-            {/* Instructions */}
-            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">
-                Instrucciones de uso:
-              </h4>
-              <ol className="text-sm text-blue-700 dark:text-blue-400 space-y-1 list-decimal list-inside">
-                <li>Copia el token completo usando el botón de abajo</li>
-                <li>En tu aplicación .NET, guarda este token en la configuración</li>
-                <li>Usa el validador de licencias para verificar el token localmente</li>
-                <li>
-                  El token contiene: empresa, producto, usuarios máximos y fecha de expiración
-                </li>
-              </ol>
-            </div>
+            {/* Public Key */}
+            {publicKey && (
+              <div className="rounded-lg border bg-muted/30 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-amber-500">
+                      <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" />
+                    </svg>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Clave Pública RSA</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(publicKey, setCopiedPublicKey)}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {copiedPublicKey ? (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 text-green-500"><polyline points="20 6 9 17 4 12" /></svg>
+                        <span className="text-green-600">¡Copiada!</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></svg>
+                        Copiar
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="bg-muted rounded-md p-3 max-h-28 overflow-auto">
+                  <code className="text-xs font-mono break-all whitespace-pre-wrap text-foreground">{publicKey}</code>
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Incrusta esta clave en tu aplicación .NET para verificar tokens sin conexión (RSA-SHA256 / SPKI PEM).
+                </p>
+              </div>
+            )}
           </div>
 
-          <DialogFooter className="gap-2 sm:gap-0 flex-wrap">
+          <DialogFooter className="gap-2 pt-2">
             <Button variant="outline" onClick={() => setTokenModalOpen(false)}>
               Cerrar
             </Button>
@@ -754,40 +848,15 @@ export default function ClientLicensesPage() {
               >
                 {fetcher.state === 'submitting' ? (
                   <>
-                    <svg
-                      className="animate-spin h-4 w-4"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      ></circle>
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      ></path>
+                    <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
                     Regenerando...
                   </>
                 ) : (
                   <>
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4"
-                    >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
                       <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
                       <path d="M3 3v5h5" />
                       <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
@@ -798,42 +867,6 @@ export default function ClientLicensesPage() {
                 )}
               </Button>
             )}
-            <Button onClick={handleCopyToken} className="gap-2">
-              {copied ? (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  ¡Copiado!
-                </>
-              ) : (
-                <>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-4 w-4"
-                  >
-                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
-                  </svg>
-                  Copiar Token
-                </>
-              )}
-            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

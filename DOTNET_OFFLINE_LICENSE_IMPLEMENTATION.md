@@ -117,6 +117,10 @@ namespace YourNamespace.Licensing
         [JsonPropertyName("licenseKey")]
         public string LicenseKey { get; set; } = string.Empty;
 
+        /// <summary>ID de la maquina vinculada (null si no esta vinculada)</summary>
+        [JsonPropertyName("machineId")]
+        public string? MachineId { get; set; }
+
         // Propiedades de conveniencia (no parte del JSON)
         [JsonIgnore]
         public DateTime? ExpiresAtDate => ExpiresAt != null ? DateTime.Parse(ExpiresAt).ToUniversalTime() : null;
@@ -674,7 +678,87 @@ public partial class LicenseActivationWindow : Window
 
 ---
 
-## 4. Obtener la Clave Publica
+## 4. Endpoints de la API (Referencia)
+
+### 4.1. Generar Token Offline
+
+**`POST /api/licenses/offline/generate`** *(requiere autenticacion JWT)*
+
+Request:
+```json
+{
+  "licenseId": "uuid-de-la-licencia"
+}
+```
+
+Respuesta exitosa:
+```json
+{
+  "success": true,
+  "token": "eyJkYXRhIjp7ImNvZGUiOiI...",
+  "licenseId": "uuid-de-la-licencia",
+  "message": "Offline token generated successfully"
+}
+```
+
+> **IMPORTANTE**: La respuesta incluye `licenseId` ademas del `token`. Usa `licenseId` para asociar el token a la licencia en tu sistema sin tener que decodificar el token.
+
+Respuestas de error:
+```json
+{ "success": false, "message": "License not found" }
+{ "success": false, "message": "License is inactive" }
+```
+
+---
+
+### 4.2. Verificar Token Offline (endpoint publico)
+
+**`POST /api/licenses/offline/verify`** *(publico, sin autenticacion)*
+
+Request:
+```json
+{
+  "token": "eyJkYXRhIjp7ImNvZGUiOiI..."
+}
+```
+
+Respuesta exitosa:
+```json
+{
+  "valid": true,
+  "expired": false,
+  "payload": {
+    "code": "uuid-del-cliente",
+    "companyName": "Nombre de la Empresa",
+    "product": "Professional Plan",
+    "maxUsers": 5,
+    "expiresAt": "2026-12-30T18:00:00.000Z",
+    "issuedAt": "2026-02-03T12:00:00.000Z",
+    "licenseId": "uuid-de-la-licencia",
+    "licenseKey": "7525a653-cc97-4014-bf65-7123b137275e"
+  },
+  "message": "Token is valid"
+}
+```
+
+---
+
+### 4.3. Obtener Clave Publica
+
+**`GET /api/licenses/offline/public-key`** *(publico, sin autenticacion)*
+
+Respuesta:
+```json
+{
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIBI...\n-----END PUBLIC KEY-----",
+  "algorithm": "RSA-SHA256",
+  "format": "PEM (SPKI)"
+}
+```
+
+---
+
+## 5. Obtener la Clave Publica (Detalle)
 
 ### Opcion A: Desde el API (recomendado para desarrollo)
 
@@ -1199,6 +1283,7 @@ Donde:
 | `issuedAt`    | `string`          | Fecha de emision ISO 8601          |
 | `licenseId`   | `string`          | UUID de la licencia                |
 | `licenseKey`  | `string`          | Clave de la licencia               |
+| `machineId`   | `string` o `null` | ID de maquina vinculada o null     |
 
 ### Clases C# Principales
 

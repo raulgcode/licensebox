@@ -23,6 +23,8 @@ export interface OfflineLicensePayload {
   licenseId: string;
   /** License key */
   licenseKey: string;
+  /** Machine ID bound to this license (null if not bound) */
+  machineId: string | null;
 }
 
 /**

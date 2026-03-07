@@ -178,6 +178,7 @@ export class LicenseService {
         client.name,
         data.maxUsers ?? 1,
         expiresAtDate,
+        license.machineId,
       );
 
       // Update license with the token
@@ -203,6 +204,7 @@ export class LicenseService {
     companyName: string,
     maxUsers: number,
     expiresAt: Date | null,
+    machineId: string | null,
   ): string {
     const payload: OfflineLicensePayload = {
       code: clientCode,
@@ -213,6 +215,7 @@ export class LicenseService {
       issuedAt: new Date().toISOString(),
       licenseId,
       licenseKey,
+      machineId,
     };
 
     return this.cryptoService.generateOfflineLicenseToken(payload);
@@ -293,6 +296,7 @@ export class LicenseService {
           client.name,
           +license.maxUsers,
           license.expiresAt,
+          license.machineId,
         );
 
         const updatedLicense = await this.prisma.license.update({
@@ -512,6 +516,7 @@ export class LicenseService {
       license.client.name,
       +license.maxUsers,
       license.expiresAt,
+      license.machineId,
     );
 
     // Update license with the token
