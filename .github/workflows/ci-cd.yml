@@ -153,9 +153,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: [detect-changes, build-test, release-database]
     if: |
-      always() && 
-      github.ref == 'refs/heads/main' && 
-      github.event_name == 'push' && 
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.event_name == 'push' &&
       needs.detect-changes.outputs.api == 'true' &&
       (needs.release-database.result == 'success' || needs.release-database.result == 'skipped')
     outputs:
@@ -167,6 +167,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: main
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -224,6 +225,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+          ref: main
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
