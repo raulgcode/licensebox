@@ -40,7 +40,7 @@ const schema = z.object({
 function formatDateForInput(date: Date | string | null): string {
   if (!date) return '';
   const d = new Date(date);
-  return d.toISOString().slice(0, 16);
+  return d.toISOString().slice(0, 10);
 }
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
@@ -222,7 +222,7 @@ export default function EditLicensePage() {
               <Field>
                 <FieldLabel htmlFor={fields.expiresAt.id}>Fecha de Expiración</FieldLabel>
                 <Input
-                  {...getInputProps(fields.expiresAt, { type: 'datetime-local' })}
+                  {...getInputProps(fields.expiresAt, { type: 'date' })}
                   key={fields.expiresAt.key}
                   defaultValue={fields.expiresAt.initialValue}
                   className="h-11"

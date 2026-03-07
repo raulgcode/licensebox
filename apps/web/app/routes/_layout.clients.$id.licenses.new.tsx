@@ -218,7 +218,7 @@ export default function NewLicensePage() {
               <Field>
                 <FieldLabel htmlFor={fields.expiresAt.id}>Fecha de Expiración</FieldLabel>
                 <Input
-                  {...getInputProps(fields.expiresAt, { type: 'datetime-local' })}
+                  {...getInputProps(fields.expiresAt, { type: 'date' })}
                   className="h-11"
                 />
                 <FieldDescription>Deja vacío para una licencia permanente.</FieldDescription>
