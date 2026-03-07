@@ -1,3 +1,9 @@
+## [api-v1.4.1](https://github.com/raulgcode/licensebox/compare/api-v1.4.0...api-v1.4.1) (2026-03-07)
+
+### ♻️ Code Refactoring
+
+* **auth, mail:** format code for improved readability ([e25cbbb](https://github.com/raulgcode/licensebox/commit/e25cbbbd06bec53a6d8d1e18925b9fd3762fa6a7))
+
 ## [api-v1.4.0](https://github.com/raulgcode/licensebox/compare/api-v1.3.0...api-v1.4.0) (2026-03-07)
 
 ### ✨ Features
