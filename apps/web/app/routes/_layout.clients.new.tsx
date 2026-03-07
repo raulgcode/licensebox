@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs } from 'react-router';
-import { Form, redirect, useActionData, useNavigation, Link, data } from 'react-router';
+import { Form, useActionData, useNavigation, Link, data } from 'react-router';
 import { useState, useEffect } from 'react';
 import { getFormProps, getInputProps } from '@conform-to/react';
 import { parseWithZod } from '@conform-to/zod';
@@ -60,8 +60,11 @@ export default function NewClientPage() {
   const isLoading = navigation.state === 'loading';
   const [showSecretModal, setShowSecretModal] = useState(false);
 
+  const submissionResult =
+    lastResult && 'success' in lastResult ? null : lastResult;
+
   const [form, fields] = useForm({
-    lastResult,
+    lastResult: submissionResult,
     schema,
     id: 'new-client-form',
     defaultValue: {
