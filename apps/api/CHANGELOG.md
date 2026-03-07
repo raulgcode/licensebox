@@ -1,3 +1,9 @@
+## [api-v1.4.0](https://github.com/raulgcode/licensebox/compare/api-v1.3.0...api-v1.4.0) (2026-03-07)
+
+### ✨ Features
+
+* include licenseId in offline token generation response ([cf2f350](https://github.com/raulgcode/licensebox/commit/cf2f350ef7028455c15f4111eb9eed2901eaf7b8))
+
 ## [api-v1.3.0](https://github.com/raulgcode/licensebox/compare/api-v1.2.0...api-v1.3.0) (2026-03-07)
 
 ### ✨ Features
