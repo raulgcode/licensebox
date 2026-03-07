@@ -64,7 +64,10 @@ export class MailService {
         `,
       });
     } catch (error) {
-      this.logger.error(`Failed to send password reset email to ${email}`, error);
+      this.logger.error(
+        `Failed to send password reset email to ${email}`,
+        error,
+      );
       throw error;
     }
   }

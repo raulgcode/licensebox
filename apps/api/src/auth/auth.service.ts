@@ -2,7 +2,6 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
-  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -142,7 +141,10 @@ export class AuthService {
       data: { token, userId: user.id, expiresAt },
     });
 
-    const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
+    const appUrl = this.configService.get<string>(
+      'APP_URL',
+      'http://localhost:3000',
+    );
     const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
     await this.mailService.sendPasswordResetEmail(email, resetUrl);
@@ -163,7 +165,9 @@ export class AuthService {
     });
 
     if (!resetToken || resetToken.used || resetToken.expiresAt < new Date()) {
-      throw new BadRequestException('El enlace de recuperación no es válido o ha expirado.');
+      throw new BadRequestException(
+        'El enlace de recuperación no es válido o ha expirado.',
+      );
     }
 
     const hashedPassword = await this.hashPassword(newPassword);
@@ -179,6 +183,9 @@ export class AuthService {
       }),
     ]);
 
-    return { message: 'Contraseña restablecida correctamente. Ahora puedes iniciar sesión.' };
+    return {
+      message:
+        'Contraseña restablecida correctamente. Ahora puedes iniciar sesión.',
+    };
   }
 }
