@@ -1,3 +1,12 @@
+## [web-v1.1.0](https://github.com/raulgcode/licensebox/compare/web-v1.0.0...web-v1.1.0) (2026-03-07)
+
+### ✨ Features
+
+* add machineId to offline license payload and update related API responses ([c6fccd9](https://github.com/raulgcode/licensebox/commit/c6fccd948e4a2ae2bb609c0666671279cff2ba60))
+* add maxUsers and generateOfflineToken fields to license forms and implement offline token generation ([aa63e19](https://github.com/raulgcode/licensebox/commit/aa63e19c0b80aa48ba62b9b3127484dffd621cc9))
+* **auth:** add forgot and reset password functionality ([0bfcedf](https://github.com/raulgcode/licensebox/commit/0bfcedf11d66b720deb56a2bc5df6a42ba017e4d))
+* update ([9f59256](https://github.com/raulgcode/licensebox/commit/9f59256f9cb7b17d8bb36e90b8c0a63f8f6d13ff))
+
 ## web-v1.0.0 (2026-02-03)
 
 ### ✨ Features
