@@ -225,6 +225,7 @@ export interface VerifyOfflineTokenResponseDto {
 export interface GenerateOfflineTokenResponseDto {
   success: boolean;
   token?: string;
+  licenseId?: string;
   message?: string;
 }
 

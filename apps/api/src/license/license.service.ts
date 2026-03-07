@@ -510,7 +510,7 @@ export class LicenseService {
       license.product,
       license.client.id,
       license.client.name,
-      license.maxUsers,
+      +license.maxUsers,
       license.expiresAt,
     );
 
@@ -523,6 +523,7 @@ export class LicenseService {
     return {
       success: true,
       token: offlineToken,
+      licenseId: licenseId,
       message: 'Offline token generated successfully',
     };
   }
