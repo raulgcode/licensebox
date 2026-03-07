@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma.service';
 import {
   ClientDto,
@@ -11,10 +12,18 @@ import {
   UpdateClientDto,
   RegenerateSecretResponseDto,
 } from '@licensebox/shared';
+import {
+  AuditAction,
+  AuditEntity,
+  type AuditLogEvent,
+} from '../audit/audit.types';
 
 @Injectable()
 export class ClientService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
   /**
    * Deactivate all licenses that have expired
@@ -143,7 +152,12 @@ export class ClientService {
     };
   }
 
-  async update(id: string, data: UpdateClientDto): Promise<ClientDto> {
+  async update(
+    id: string,
+    data: UpdateClientDto,
+    actorId?: string,
+    actorEmail?: string,
+  ): Promise<ClientDto> {
     // Check if client exists
     const existingClient = await this.prisma.client.findUnique({
       where: { id },
@@ -161,6 +175,27 @@ export class ClientService {
         isActive: data.isActive,
       },
     });
+
+    // Compute diff and emit audit event (fire-and-forget)
+    const trackedFields = ['name', 'description', 'isActive'] as const;
+    const changes: Record<string, { previous: unknown; updated: unknown }> = {};
+    for (const field of trackedFields) {
+      if (data[field] !== undefined && data[field] !== existingClient[field]) {
+        changes[field] = {
+          previous: existingClient[field],
+          updated: data[field],
+        };
+      }
+    }
+
+    this.eventEmitter.emit('audit.log', {
+      action: AuditAction.UPDATE,
+      entity: AuditEntity.CLIENT,
+      entityId: id,
+      userId: actorId,
+      userEmail: actorEmail,
+      metadata: { name: existingClient.name, changes },
+    } satisfies AuditLogEvent);
 
     return client as ClientDto;
   }

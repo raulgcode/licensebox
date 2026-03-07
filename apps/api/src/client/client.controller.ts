@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Req,
   HttpCode,
   HttpStatus,
   Query,
@@ -18,6 +19,8 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { ClientService } from './client.service';
+import { AuditLog } from '../audit/audit-log.decorator';
+import { AuditAction, AuditEntity } from '../audit/audit.types';
 import {
   ClientDto,
   ClientWithLicensesDto,
@@ -69,6 +72,11 @@ export class ClientController {
   /**
    * Create a new client
    */
+  @AuditLog({
+    action: AuditAction.CREATE,
+    entity: AuditEntity.CLIENT,
+    metadataFromResponse: ['name'],
+  })
   @Post()
   @ApiOperation({
     summary: 'Create a new client',
@@ -92,13 +100,20 @@ export class ClientController {
   async update(
     @Param('id') id: string,
     @Body() data: UpdateClientDto,
+    @Req() req: { user?: { sub?: string; email?: string } },
   ): Promise<ClientDto> {
-    return this.clientService.update(id, data);
+    return this.clientService.update(id, data, req.user?.sub, req.user?.email);
   }
 
   /**
    * Delete a client
    */
+  @AuditLog({
+    action: AuditAction.DELETE,
+    entity: AuditEntity.CLIENT,
+    entityIdFromParam: 'id',
+    metadataFromResponse: ['name'],
+  })
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Delete a client' })
@@ -112,6 +127,12 @@ export class ClientController {
   /**
    * Toggle client active status
    */
+  @AuditLog({
+    action: AuditAction.TOGGLE_ACTIVE,
+    entity: AuditEntity.CLIENT,
+    entityIdFromParam: 'id',
+    metadataFromResponse: ['name', 'isActive'],
+  })
   @Post(':id/toggle-active')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Toggle client active status' })
@@ -123,6 +144,12 @@ export class ClientController {
   /**
    * Regenerate the secret key for a client
    */
+  @AuditLog({
+    action: AuditAction.REGENERATE_SECRET,
+    entity: AuditEntity.CLIENT,
+    entityIdFromParam: 'id',
+    metadataFromResponse: ['name'],
+  })
   @Post(':id/regenerate-secret')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

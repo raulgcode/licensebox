@@ -6,6 +6,7 @@ import {
   type ThrottlerModuleOptions,
 } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { PrismaService } from './prisma.service';
@@ -13,6 +14,7 @@ import { UsersController } from './users.controller';
 import { AuthModule } from './auth/auth.module';
 import { LicenseModule } from './license/license.module';
 import { ClientModule } from './client/client.module';
+import { AuditModule } from './audit/audit.module';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -51,9 +53,11 @@ const envFilePath = existsSync(rootEnvPath) ? rootEnvPath : undefined;
         };
       },
     }),
+    EventEmitterModule.forRoot(),
     AuthModule,
     LicenseModule,
     ClientModule,
+    AuditModule,
   ],
   controllers: [AppController, UsersController],
   providers: [

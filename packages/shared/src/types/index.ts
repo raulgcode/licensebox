@@ -37,3 +37,6 @@ export * from './license.types';
 
 // Export client types
 export * from './client.types';
+
+// Export audit types
+export * from './audit.types';

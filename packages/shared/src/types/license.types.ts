@@ -228,6 +228,9 @@ export interface GenerateOfflineTokenResponseDto {
   success: boolean;
   token?: string;
   licenseId?: string;
+  licenseKey?: string;
+  product?: string;
+  clientName?: string;
   message?: string;
 }
 

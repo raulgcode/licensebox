@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Req,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
@@ -17,6 +18,8 @@ import {
 } from '@nestjs/swagger';
 import { LicenseService } from './license.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { AuditLog } from '../audit/audit-log.decorator';
+import { AuditAction, AuditEntity } from '../audit/audit.types';
 import type {
   LicenseDto,
   LicenseWithClientDto,
@@ -93,6 +96,16 @@ export class LicenseController {
   /**
    * Activate a license on a machine (public endpoint)
    */
+  @AuditLog({
+    action: AuditAction.LICENSE_ACTIVATE,
+    entity: AuditEntity.LICENSE,
+    entityIdFromResponse: 'id',
+    metadataFromResponse: [
+      'license.key',
+      'license.product',
+      'license.machineId',
+    ],
+  })
   @Public()
   @Post('activate')
   @HttpCode(HttpStatus.OK)
@@ -123,6 +136,12 @@ export class LicenseController {
    * Generate an offline license token for a license
    * This token can be validated client-side without server connection
    */
+  @AuditLog({
+    action: AuditAction.GENERATE_OFFLINE_TOKEN,
+    entity: AuditEntity.LICENSE,
+    entityIdFromResponse: 'licenseId',
+    metadataFromResponse: ['licenseKey', 'product', 'clientName'],
+  })
   @Post('offline/generate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -188,6 +207,11 @@ export class LicenseController {
   /**
    * Create a new license
    */
+  @AuditLog({
+    action: AuditAction.CREATE,
+    entity: AuditEntity.LICENSE,
+    metadataFromResponse: ['key', 'product', 'clientId', 'isActive'],
+  })
   @Post()
   @ApiOperation({ summary: 'Create a new license' })
   @ApiResponse({ status: 201, description: 'License created successfully' })
@@ -199,6 +223,12 @@ export class LicenseController {
   /**
    * Deactivate a license (remove machine binding) - requires auth
    */
+  @AuditLog({
+    action: AuditAction.LICENSE_DEACTIVATE,
+    entity: AuditEntity.LICENSE,
+    entityIdFromParam: 'key',
+    metadataFromResponse: ['license.key', 'license.product'],
+  })
   @Post(':key/deactivate')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -234,13 +264,20 @@ export class LicenseController {
   async update(
     @Param('id') id: string,
     @Body() data: UpdateLicenseDto,
+    @Req() req: { user?: { sub?: string; email?: string } },
   ): Promise<LicenseDto> {
-    return this.licenseService.update(id, data);
+    return this.licenseService.update(id, data, req.user?.sub, req.user?.email);
   }
 
   /**
    * Delete a license
    */
+  @AuditLog({
+    action: AuditAction.DELETE,
+    entity: AuditEntity.LICENSE,
+    entityIdFromParam: 'id',
+    metadataFromResponse: ['key', 'product', 'clientId'],
+  })
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a license' })
   @ApiResponse({ status: 200, description: 'License deleted successfully' })

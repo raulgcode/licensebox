@@ -5,10 +5,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma.service';
 import { MailService } from '../mail/mail.service';
+import { AuditAction, AuditEntity, type AuditLogEvent } from '../audit/audit.types';
 import {
   JwtPayload,
   LoginResponseDto,
@@ -25,6 +27,7 @@ export class AuthService {
     private jwtService: JwtService,
     private mailService: MailService,
     private configService: ConfigService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   async signIn(email: string, password: string): Promise<LoginResponseDto> {
@@ -33,15 +36,35 @@ export class AuthService {
     });
 
     if (!user) {
+      this.eventEmitter.emit('audit.log', {
+        action: AuditAction.LOGIN_FAILED,
+        entity: AuditEntity.USER,
+        userEmail: email,
+        metadata: { reason: 'User not found' },
+      } satisfies AuditLogEvent);
       throw new UnauthorizedException('Invalid credentials');
     }
 
     if (!user.isActive) {
+      this.eventEmitter.emit('audit.log', {
+        action: AuditAction.LOGIN_FAILED,
+        entity: AuditEntity.USER,
+        entityId: user.id,
+        userEmail: email,
+        metadata: { reason: 'Account inactive' },
+      } satisfies AuditLogEvent);
       throw new UnauthorizedException('Account is inactive');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      this.eventEmitter.emit('audit.log', {
+        action: AuditAction.LOGIN_FAILED,
+        entity: AuditEntity.USER,
+        entityId: user.id,
+        userEmail: email,
+        metadata: { reason: 'Invalid password' },
+      } satisfies AuditLogEvent);
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -56,6 +79,14 @@ export class AuthService {
       name: user.name,
       isActive: user.isActive,
     };
+
+    this.eventEmitter.emit('audit.log', {
+      action: AuditAction.LOGIN,
+      entity: AuditEntity.USER,
+      entityId: user.id,
+      userEmail: user.email,
+      userId: user.id,
+    } satisfies AuditLogEvent);
 
     return {
       access_token: await this.jwtService.signAsync(payload),

@@ -51,6 +51,23 @@ model PasswordResetToken {
   @@map("password_reset_tokens")
 }
 
+// Audit log model
+model AuditLog {
+  id        String   @id @default(uuid())
+  action    String
+  entity    String
+  entityId  String?
+  userId    String?
+  userEmail String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
 // License model
 model License {
   id           String    @id @default(uuid())

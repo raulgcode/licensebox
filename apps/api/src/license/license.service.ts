@@ -3,7 +3,13 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma.service';
+import {
+  AuditAction,
+  AuditEntity,
+  type AuditLogEvent,
+} from '../audit/audit.types';
 import {
   LicenseDto,
   LicenseWithClientDto,
@@ -23,6 +29,7 @@ export class LicenseService {
   constructor(
     private prisma: PrismaService,
     private cryptoService: CryptoService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -221,7 +228,12 @@ export class LicenseService {
     return this.cryptoService.generateOfflineLicenseToken(payload);
   }
 
-  async update(id: string, data: UpdateLicenseDto): Promise<LicenseDto> {
+  async update(
+    id: string,
+    data: UpdateLicenseDto,
+    actorId?: string,
+    actorEmail?: string,
+  ): Promise<LicenseDto> {
     // Check if license exists
     const existingLicense = await this.prisma.license.findUnique({
       where: { id },
@@ -280,6 +292,40 @@ export class LicenseService {
         ...(isActive !== undefined && { isActive }),
       },
     });
+
+    // Compute diff and emit audit event (fire-and-forget)
+    const trackedFields = [
+      'key',
+      'product',
+      'clientId',
+      'machineId',
+      'maxUsers',
+      'expiresAt',
+      'isActive',
+    ] as const;
+    const changes: Record<string, { previous: unknown; updated: unknown }> = {};
+    for (const field of trackedFields) {
+      if (data[field] !== undefined) {
+        const prev = existingLicense[field];
+        const next =
+          field === 'expiresAt' && data.expiresAt
+            ? new Date(data.expiresAt).toISOString()
+            : data[field];
+        const prevNorm = prev instanceof Date ? prev.toISOString() : prev;
+        if (next !== prevNorm) {
+          changes[field] = { previous: prevNorm, updated: next };
+        }
+      }
+    }
+
+    this.eventEmitter.emit('audit.log', {
+      action: AuditAction.UPDATE,
+      entity: AuditEntity.LICENSE,
+      entityId: id,
+      userId: actorId,
+      userEmail: actorEmail,
+      metadata: { key: existingLicense.key, changes },
+    } satisfies AuditLogEvent);
 
     // Regenerate offline token if requested
     if (data.regenerateOfflineToken) {
@@ -528,7 +574,10 @@ export class LicenseService {
     return {
       success: true,
       token: offlineToken,
-      licenseId: licenseId,
+      licenseId: license.id,
+      licenseKey: license.key,
+      product: license.product,
+      clientName: license.client.name,
       message: 'Offline token generated successfully',
     };
   }
