@@ -1,3 +1,9 @@
+## [api-v1.3.0](https://github.com/raulgcode/licensebox/compare/api-v1.2.0...api-v1.3.0) (2026-03-07)
+
+### ✨ Features
+
+* **auth:** add forgot and reset password functionality ([0bfcedf](https://github.com/raulgcode/licensebox/commit/0bfcedf11d66b720deb56a2bc5df6a42ba017e4d))
+
 ## [api-v1.2.0](https://github.com/raulgcode/licensebox/compare/api-v1.1.0...api-v1.2.0) (2026-02-04)
 
 ### ✨ Features
