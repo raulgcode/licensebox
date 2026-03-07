@@ -291,7 +291,7 @@ export class LicenseService {
           license.product,
           client.id,
           client.name,
-          license.maxUsers,
+          +license.maxUsers,
           license.expiresAt,
         );
 

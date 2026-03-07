@@ -74,7 +74,7 @@ export function LoginForm({ className, fields, form, navigation, ...props }: Log
                 <div className="flex items-center">
                   <FieldLabel htmlFor={fields.password.id}>Contraseña</FieldLabel>
                   <a
-                    href="#"
+                    href="/forgot-password"
                     className="ml-auto text-sm text-primary hover:text-primary/80 transition-colors"
                   >
                     ¿Olvidaste tu contraseña?
@@ -153,7 +153,7 @@ export async function action({ request }: ActionFunctionArgs) {
       password,
     });
 
-    const { access_token, user } = response.data;
+    const { access_token } = response.data;
 
     // Redirect to home page after successful login
     return redirect('/', {

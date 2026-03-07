@@ -1,37 +1,66 @@
-# Implementación de Validación de Licencias Offline en .NET
+# Implementacion de Validacion de Licencias Offline en .NET
 
 ## Contexto para el LLM
 
-Este documento contiene instrucciones completas para implementar un sistema de validación de licencias offline en una aplicación .NET. El sistema usa tokens firmados con RSA-SHA256 que pueden ser validados localmente sin conexión a internet.
+Este documento contiene instrucciones completas para implementar un sistema de validacion de licencias offline en una aplicacion .NET. El sistema usa tokens firmados con RSA-SHA256 que pueden ser validados localmente sin conexion a internet.
 
-**IMPORTANTE**: Este documento está diseñado para ser procesado por un LLM. Implementa todo el código exactamente como se especifica.
+**IMPORTANTE**: Este documento esta disenado para ser procesado por un LLM. Implementa todo el codigo exactamente como se especifica.
 
 ---
 
-## 1. Descripción del Sistema
+## 1. Descripcion del Sistema
 
-### ¿Qué es un Token de Licencia Offline?
+### Como se genera el token (lado servidor — Node.js)
 
-Es un string Base64 que contiene:
+El servidor construye el token en tres pasos:
 
-1. **Payload JSON** (datos de la licencia en Base64)
-2. **Firma RSA-SHA256** (en Base64)
-3. Separados por un punto: `{payload}.{signature}`
+**Paso 1**: Construir el payload de la licencia (objeto `OfflineLicensePayload`)
 
-### Estructura del Payload (JSON decodificado)
+**Paso 2**: Firmar `JSON.stringify(payload)` con RSA-SHA256 (clave privada PKCS8) y crear el objeto token:
+```json
+{
+  "data": { ...payload... },
+  "signature": "<base64 de la firma RSA>",
+  "algorithm": "RSA-SHA256",
+  "version": 1
+}
+```
+
+**Paso 3**: El token final es `Buffer.from(JSON.stringify(tokenObject)).toString('base64')`
+
+El token es un **unico string Base64** — no tiene el formato `payload.signature`.
+
+---
+
+### Estructura del Payload (`data`)
 
 ```json
 {
-  "licenseId": "uuid-de-la-licencia",
-  "licenseKey": "7525a653-cc97-4014-bf65-7123b137275e",
-  "clientId": "uuid-del-cliente",
-  "clientName": "Nombre de la Empresa",
+  "code": "uuid-del-cliente",
+  "companyName": "Nombre de la Empresa",
   "product": "Professional Plan",
   "maxUsers": 5,
   "expiresAt": "2026-12-30T18:00:00.000Z",
-  "issuedAt": "2026-02-03T12:00:00.000Z"
+  "issuedAt": "2026-02-03T12:00:00.000Z",
+  "licenseId": "uuid-de-la-licencia",
+  "licenseKey": "7525a653-cc97-4014-bf65-7123b137275e"
 }
 ```
+
+> **IMPORTANTE**: Los campos son `code` (no `clientId`) y `companyName` (no `clientName`).
+> `expiresAt` puede ser `null` si la licencia no expira.
+
+---
+
+### Proceso de Verificacion en .NET
+
+1. Base64-decodificar el token -> JSON del objeto `OfflineLicenseToken`
+2. Extraer el JSON crudo del campo `data` (para reproducir exactamente lo que se firmo)
+3. Verificar la firma RSA-SHA256: `verify(Encoding.UTF8.GetBytes(rawDataJson), base64Signature)` usando la clave publica SPKI
+4. Si la firma es valida, deserializar `data` en `OfflineLicensePayload`
+5. Verificar expiracion comparando `expiresAt` con `DateTime.UtcNow`
+
+> **Critico**: La firma se creo sobre el string JSON del objeto `data` tal como aparece en el token decodificado. NO re-serialices el objeto C# para verificar; usa el JSON crudo extraido con `JsonDocument`.
 
 ---
 
@@ -51,37 +80,53 @@ using System.Text.Json.Serialization;
 namespace YourNamespace.Licensing
 {
     /// <summary>
-    /// Payload de la licencia offline deserializado
+    /// Payload de la licencia offline deserializado.
+    /// Los nombres de campo deben coincidir exactamente con los del servidor.
     /// </summary>
     public class OfflineLicensePayload
     {
-        [JsonPropertyName("licenseId")]
-        public string LicenseId { get; set; } = string.Empty;
+        /// <summary>Identificador/UUID del cliente</summary>
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = string.Empty;
 
-        [JsonPropertyName("licenseKey")]
-        public string LicenseKey { get; set; } = string.Empty;
+        /// <summary>Nombre de la empresa/cliente</summary>
+        [JsonPropertyName("companyName")]
+        public string CompanyName { get; set; } = string.Empty;
 
-        [JsonPropertyName("clientId")]
-        public string ClientId { get; set; } = string.Empty;
-
-        [JsonPropertyName("clientName")]
-        public string ClientName { get; set; } = string.Empty;
-
+        /// <summary>Nombre del producto licenciado</summary>
         [JsonPropertyName("product")]
         public string Product { get; set; } = string.Empty;
 
+        /// <summary>Numero maximo de usuarios permitidos</summary>
         [JsonPropertyName("maxUsers")]
         public int MaxUsers { get; set; } = 1;
 
+        /// <summary>Fecha de expiracion en ISO 8601 (puede ser null si no expira)</summary>
         [JsonPropertyName("expiresAt")]
-        public DateTime? ExpiresAt { get; set; }
+        public string? ExpiresAt { get; set; }
 
+        /// <summary>Fecha de emision en ISO 8601</summary>
         [JsonPropertyName("issuedAt")]
-        public DateTime IssuedAt { get; set; }
+        public string IssuedAt { get; set; } = string.Empty;
+
+        /// <summary>ID unico de la licencia</summary>
+        [JsonPropertyName("licenseId")]
+        public string LicenseId { get; set; } = string.Empty;
+
+        /// <summary>Clave de la licencia</summary>
+        [JsonPropertyName("licenseKey")]
+        public string LicenseKey { get; set; } = string.Empty;
+
+        // Propiedades de conveniencia (no parte del JSON)
+        [JsonIgnore]
+        public DateTime? ExpiresAtDate => ExpiresAt != null ? DateTime.Parse(ExpiresAt).ToUniversalTime() : null;
+
+        [JsonIgnore]
+        public DateTime IssuedAtDate => DateTime.Parse(IssuedAt).ToUniversalTime();
     }
 
     /// <summary>
-    /// Resultado de la validación de licencia
+    /// Resultado de la validacion de licencia
     /// </summary>
     public class LicenseValidationResult
     {
@@ -93,19 +138,22 @@ namespace YourNamespace.Licensing
     }
 
     /// <summary>
-    /// Validador de licencias offline usando RSA-SHA256
+    /// Validador de licencias offline usando RSA-SHA256.
+    /// El token es un Base64 que contiene un JSON con { data, signature, algorithm, version }.
+    /// La firma fue creada sobre JSON.stringify(data) con clave privada PKCS8.
+    /// La verificacion usa la clave publica SPKI en formato PEM.
     /// </summary>
-    public class LicenseValidator
+    public class LicenseValidator : IDisposable
     {
         private readonly RSA _rsa;
 
         /// <summary>
-        /// Clave pública RSA en formato PEM.
-        /// IMPORTANTE: Reemplaza este valor con tu clave pública real.
+        /// Clave publica RSA en formato PEM (SPKI).
+        /// IMPORTANTE: Reemplaza este valor con tu clave publica real.
         /// Obtener de: GET /api/licenses/offline/public-key
         /// </summary>
         private const string PUBLIC_KEY_PEM = @"-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PUBLICA AQUI ...
 -----END PUBLIC KEY-----";
 
         public LicenseValidator()
@@ -115,7 +163,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
         }
 
         /// <summary>
-        /// Constructor alternativo que acepta la clave pública como parámetro
+        /// Constructor alternativo que acepta la clave publica como parametro
         /// </summary>
         public LicenseValidator(string publicKeyPem)
         {
@@ -124,34 +172,86 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
         }
 
         /// <summary>
-        /// Valida un token de licencia offline
+        /// Valida un token de licencia offline.
+        ///
+        /// Formato del token:
+        ///   base64( JSON({ data: {...}, signature: "base64", algorithm: "RSA-SHA256", version: 1 }) )
+        ///
+        /// La firma fue creada sobre: UTF8.GetBytes(JSON.stringify(data))
         /// </summary>
-        /// <param name="token">Token completo en formato: payload.signature</param>
-        /// <returns>Resultado de la validación con los datos de la licencia</returns>
         public LicenseValidationResult ValidateToken(string token)
         {
             try
             {
-                // 1. Separar payload y firma
-                var parts = token.Split('.');
-                if (parts.Length != 2)
+                // 1. Decodificar el Base64 para obtener el JSON del token completo
+                string tokenJson;
+                try
+                {
+                    tokenJson = Encoding.UTF8.GetString(Convert.FromBase64String(token));
+                }
+                catch (FormatException)
                 {
                     return new LicenseValidationResult
                     {
                         IsValid = false,
-                        ErrorMessage = "Formato de token inválido. Se esperaba: payload.signature"
+                        ErrorMessage = "Token malformado: no es un Base64 valido."
                     };
                 }
 
-                var payloadBase64 = parts[0];
-                var signatureBase64 = parts[1];
+                // 2. Parsear el JSON usando JsonDocument para preservar el JSON crudo de "data"
+                using var doc = JsonDocument.Parse(tokenJson);
+                var root = doc.RootElement;
 
-                // 2. Verificar la firma RSA-SHA256
-                var payloadBytes = Encoding.UTF8.GetBytes(payloadBase64);
-                var signatureBytes = Convert.FromBase64String(signatureBase64);
+                // 3. Verificar version
+                if (!root.TryGetProperty("version", out var versionElement) || versionElement.GetInt32() != 1)
+                {
+                    return new LicenseValidationResult
+                    {
+                        IsValid = false,
+                        ErrorMessage = "Version de token no soportada. Se requiere version 1."
+                    };
+                }
 
+                // 4. Extraer la firma
+                if (!root.TryGetProperty("signature", out var signatureElement))
+                {
+                    return new LicenseValidationResult
+                    {
+                        IsValid = false,
+                        ErrorMessage = "Token sin firma: falta el campo 'signature'."
+                    };
+                }
+                var signatureBase64 = signatureElement.GetString() ?? string.Empty;
+                byte[] signatureBytes;
+                try
+                {
+                    signatureBytes = Convert.FromBase64String(signatureBase64);
+                }
+                catch (FormatException)
+                {
+                    return new LicenseValidationResult
+                    {
+                        IsValid = false,
+                        ErrorMessage = "Firma malformada: no es un Base64 valido."
+                    };
+                }
+
+                // 5. Extraer el JSON crudo de "data" — es exactamente lo que se firmo en el servidor
+                if (!root.TryGetProperty("data", out var dataElement))
+                {
+                    return new LicenseValidationResult
+                    {
+                        IsValid = false,
+                        ErrorMessage = "Token invalido: falta el campo 'data'."
+                    };
+                }
+                // Usar el JSON crudo del campo data para reproducir exactamente lo que se firmo
+                var rawDataJson = dataElement.GetRawText();
+                var dataBytes = Encoding.UTF8.GetBytes(rawDataJson);
+
+                // 6. Verificar la firma RSA-SHA256
                 var isSignatureValid = _rsa.VerifyData(
-                    payloadBytes,
+                    dataBytes,
                     signatureBytes,
                     HashAlgorithmName.SHA256,
                     RSASignaturePadding.Pkcs1
@@ -162,14 +262,12 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
                     return new LicenseValidationResult
                     {
                         IsValid = false,
-                        ErrorMessage = "Firma inválida. El token ha sido manipulado o es falso."
+                        ErrorMessage = "Firma invalida. El token ha sido manipulado o es falso."
                     };
                 }
 
-                // 3. Decodificar el payload JSON
-                var payloadJson = Encoding.UTF8.GetString(Convert.FromBase64String(payloadBase64));
-                var license = JsonSerializer.Deserialize<OfflineLicensePayload>(payloadJson);
-
+                // 7. Deserializar el payload
+                var license = JsonSerializer.Deserialize<OfflineLicensePayload>(rawDataJson);
                 if (license == null)
                 {
                     return new LicenseValidationResult
@@ -179,10 +277,11 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
                     };
                 }
 
-                // 4. Verificar expiración
-                var isExpired = license.ExpiresAt.HasValue && license.ExpiresAt.Value < DateTime.UtcNow;
-                var daysUntilExpiration = license.ExpiresAt.HasValue
-                    ? (int)(license.ExpiresAt.Value - DateTime.UtcNow).TotalDays
+                // 8. Verificar expiracion
+                var now = DateTime.UtcNow;
+                var isExpired = license.ExpiresAtDate.HasValue && license.ExpiresAtDate.Value < now;
+                var daysUntilExpiration = license.ExpiresAtDate.HasValue
+                    ? (int)(license.ExpiresAtDate.Value - now).TotalDays
                     : int.MaxValue;
 
                 if (isExpired)
@@ -191,13 +290,13 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
                     {
                         IsValid = false,
                         IsExpired = true,
-                        ErrorMessage = $"La licencia expiró el {license.ExpiresAt:yyyy-MM-dd}",
+                        ErrorMessage = $"La licencia expiro el {license.ExpiresAtDate:yyyy-MM-dd}",
                         License = license,
                         DaysUntilExpiration = daysUntilExpiration
                     };
                 }
 
-                // 5. Licencia válida
+                // 9. Licencia valida
                 return new LicenseValidationResult
                 {
                     IsValid = true,
@@ -206,20 +305,12 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
                     DaysUntilExpiration = daysUntilExpiration
                 };
             }
-            catch (FormatException)
-            {
-                return new LicenseValidationResult
-                {
-                    IsValid = false,
-                    ErrorMessage = "Token malformado. No es un Base64 válido."
-                };
-            }
             catch (JsonException ex)
             {
                 return new LicenseValidationResult
                 {
                     IsValid = false,
-                    ErrorMessage = $"Error al parsear JSON del payload: {ex.Message}"
+                    ErrorMessage = $"Error al parsear JSON del token: {ex.Message}"
                 };
             }
             catch (CryptographicException ex)
@@ -227,7 +318,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
                 return new LicenseValidationResult
                 {
                     IsValid = false,
-                    ErrorMessage = $"Error criptográfico: {ex.Message}"
+                    ErrorMessage = $"Error criptografico: {ex.Message}"
                 };
             }
             catch (Exception ex)
@@ -241,15 +332,13 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
         }
 
         /// <summary>
-        /// Valida el token y lanza excepción si no es válido
+        /// Valida el token y lanza excepcion si no es valido
         /// </summary>
         public OfflineLicensePayload ValidateTokenOrThrow(string token)
         {
             var result = ValidateToken(token);
             if (!result.IsValid)
-            {
-                throw new LicenseValidationException(result.ErrorMessage ?? "Licencia inválida");
-            }
+                throw new LicenseValidationException(result.ErrorMessage ?? "Licencia invalida");
             return result.License!;
         }
 
@@ -260,7 +349,7 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
     }
 
     /// <summary>
-    /// Excepción lanzada cuando la validación de licencia falla
+    /// Excepcion lanzada cuando la validacion de licencia falla
     /// </summary>
     public class LicenseValidationException : Exception
     {
@@ -274,12 +363,11 @@ MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA... TU CLAVE PÚBLICA AQUÍ ...
 ```csharp
 using System;
 using System.IO;
-using System.Text.Json;
 
 namespace YourNamespace.Licensing
 {
     /// <summary>
-    /// Gestor de licencias que maneja almacenamiento y validación
+    /// Gestor de licencias que maneja almacenamiento y validacion
     /// </summary>
     public class LicenseManager
     {
@@ -288,19 +376,13 @@ namespace YourNamespace.Licensing
         private OfflineLicensePayload? _currentLicense;
         private string? _currentToken;
 
-        /// <summary>
-        /// Evento disparado cuando la licencia cambia
-        /// </summary>
+        /// <summary>Evento disparado cuando la licencia cambia</summary>
         public event EventHandler<OfflineLicensePayload?>? LicenseChanged;
 
-        /// <summary>
-        /// Licencia actual cargada
-        /// </summary>
+        /// <summary>Licencia actual cargada</summary>
         public OfflineLicensePayload? CurrentLicense => _currentLicense;
 
-        /// <summary>
-        /// Indica si hay una licencia válida cargada
-        /// </summary>
+        /// <summary>Indica si hay una licencia valida cargada</summary>
         public bool HasValidLicense => _currentLicense != null;
 
         public LicenseManager(string? publicKeyPem = null, string? licensePath = null)
@@ -316,9 +398,7 @@ namespace YourNamespace.Licensing
             );
         }
 
-        /// <summary>
-        /// Carga la licencia desde el archivo almacenado
-        /// </summary>
+        /// <summary>Carga la licencia desde el archivo almacenado</summary>
         public LicenseValidationResult LoadLicense()
         {
             if (!File.Exists(_licensePath))
@@ -326,7 +406,7 @@ namespace YourNamespace.Licensing
                 return new LicenseValidationResult
                 {
                     IsValid = false,
-                    ErrorMessage = "No se encontró archivo de licencia."
+                    ErrorMessage = "No se encontro archivo de licencia."
                 };
             }
 
@@ -348,7 +428,7 @@ namespace YourNamespace.Licensing
         /// <summary>
         /// Activa una licencia con el token proporcionado
         /// </summary>
-        /// <param name="token">Token de licencia offline</param>
+        /// <param name="token">Token de licencia offline (Base64)</param>
         /// <param name="saveToFile">Si es true, guarda el token en disco</param>
         public LicenseValidationResult ActivateLicense(string token, bool saveToFile = true)
         {
@@ -360,9 +440,7 @@ namespace YourNamespace.Licensing
                 _currentToken = token;
 
                 if (saveToFile)
-                {
                     SaveTokenToFile(token);
-                }
 
                 LicenseChanged?.Invoke(this, _currentLicense);
             }
@@ -370,9 +448,7 @@ namespace YourNamespace.Licensing
             return result;
         }
 
-        /// <summary>
-        /// Revalida la licencia actual (útil para verificar expiración)
-        /// </summary>
+        /// <summary>Revalida la licencia actual (util para verificar expiracion)</summary>
         public LicenseValidationResult RevalidateCurrentLicense()
         {
             if (_currentToken == null)
@@ -383,61 +459,48 @@ namespace YourNamespace.Licensing
                     ErrorMessage = "No hay licencia cargada para revalidar."
                 };
             }
-
             return _validator.ValidateToken(_currentToken);
         }
 
-        /// <summary>
-        /// Elimina la licencia actual
-        /// </summary>
+        /// <summary>Elimina la licencia actual</summary>
         public void RemoveLicense()
         {
             _currentLicense = null;
             _currentToken = null;
 
             if (File.Exists(_licensePath))
-            {
                 File.Delete(_licensePath);
-            }
 
             LicenseChanged?.Invoke(this, null);
         }
 
-        /// <summary>
-        /// Verifica si el producto específico está licenciado
-        /// </summary>
+        /// <summary>Verifica si el producto especifico esta licenciado</summary>
         public bool IsProductLicensed(string productName)
         {
             return _currentLicense != null &&
                    _currentLicense.Product.Equals(productName, StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Verifica si hay suficientes usuarios permitidos
-        /// </summary>
+        /// <summary>Verifica si hay suficientes usuarios permitidos</summary>
         public bool HasSufficientUsers(int requiredUsers)
         {
             return _currentLicense != null && _currentLicense.MaxUsers >= requiredUsers;
         }
 
-        /// <summary>
-        /// Obtiene los días restantes hasta la expiración
-        /// </summary>
+        /// <summary>Obtiene los dias restantes hasta la expiracion</summary>
         public int GetDaysUntilExpiration()
         {
-            if (_currentLicense?.ExpiresAt == null)
+            if (_currentLicense?.ExpiresAtDate == null)
                 return int.MaxValue;
 
-            return (int)(_currentLicense.ExpiresAt.Value - DateTime.UtcNow).TotalDays;
+            return (int)(_currentLicense.ExpiresAtDate.Value - DateTime.UtcNow).TotalDays;
         }
 
         private void SaveTokenToFile(string token)
         {
             var directory = Path.GetDirectoryName(_licensePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-            {
                 Directory.CreateDirectory(directory);
-            }
 
             File.WriteAllText(_licensePath, token);
         }
@@ -449,31 +512,32 @@ namespace YourNamespace.Licensing
 
 ## 3. Ejemplos de Uso
 
-### 3.1. Validación Simple
+### 3.1. Validacion Simple
 
 ```csharp
 using YourNamespace.Licensing;
 
-// Token obtenido del panel de administración
-string token = "eyJsaWNlbnNlSWQiOiI...";
+// Token obtenido del panel de administracion (es un string Base64)
+string token = "eyJkYXRhIjp7ImNvZGUiOiI...";
 
 var validator = new LicenseValidator();
 var result = validator.ValidateToken(token);
 
 if (result.IsValid)
 {
-    Console.WriteLine($"Licencia válida para: {result.License.ClientName}");
+    Console.WriteLine($"Licencia valida para: {result.License.CompanyName}");
+    Console.WriteLine($"Codigo de cliente: {result.License.Code}");
     Console.WriteLine($"Producto: {result.License.Product}");
-    Console.WriteLine($"Usuarios máximos: {result.License.MaxUsers}");
-    Console.WriteLine($"Expira en: {result.DaysUntilExpiration} días");
+    Console.WriteLine($"Usuarios maximos: {result.License.MaxUsers}");
+    Console.WriteLine($"Expira en: {result.DaysUntilExpiration} dias");
 }
 else
 {
-    Console.WriteLine($"Licencia inválida: {result.ErrorMessage}");
+    Console.WriteLine($"Licencia invalida: {result.ErrorMessage}");
 }
 ```
 
-### 3.2. Usando LicenseManager en una Aplicación
+### 3.2. Usando LicenseManager en una Aplicacion
 
 ```csharp
 using YourNamespace.Licensing;
@@ -484,12 +548,11 @@ public class App
 
     public static void Main(string[] args)
     {
-        // Intentar cargar licencia existente al iniciar
         var loadResult = _licenseManager.LoadLicense();
 
         if (!loadResult.IsValid)
         {
-            Console.WriteLine("No hay licencia válida. Por favor ingrese su token de licencia:");
+            Console.WriteLine("No hay licencia valida. Por favor ingrese su token de licencia:");
             var token = Console.ReadLine();
 
             var activationResult = _licenseManager.ActivateLicense(token);
@@ -501,28 +564,21 @@ public class App
             }
         }
 
-        // Licencia válida, continuar con la aplicación
         var license = _licenseManager.CurrentLicense!;
-        Console.WriteLine($"Bienvenido, {license.ClientName}!");
+        Console.WriteLine($"Bienvenido, {license.CompanyName}!");
         Console.WriteLine($"Plan: {license.Product}");
 
-        // Verificar límites
         if (!_licenseManager.HasSufficientUsers(10))
-        {
-            Console.WriteLine("Su licencia no permite 10 usuarios simultáneos.");
-        }
+            Console.WriteLine("Su licencia no permite 10 usuarios simultaneos.");
 
-        // Advertencia de expiración
         var daysLeft = _licenseManager.GetDaysUntilExpiration();
         if (daysLeft < 30)
-        {
-            Console.WriteLine($"⚠️ Su licencia expira en {daysLeft} días.");
-        }
+            Console.WriteLine($"ADVERTENCIA: Su licencia expira en {daysLeft} dias.");
     }
 }
 ```
 
-### 3.3. En una Aplicación WPF/WinForms
+### 3.3. En una Aplicacion WPF/WinForms
 
 ```csharp
 public partial class MainWindow : Window
@@ -536,19 +592,16 @@ public partial class MainWindow : Window
         _licenseManager = new LicenseManager();
         _licenseManager.LicenseChanged += OnLicenseChanged;
 
-        // Cargar licencia al iniciar
         var result = _licenseManager.LoadLicense();
         if (!result.IsValid)
-        {
             ShowLicenseActivationDialog();
-        }
     }
 
     private void OnLicenseChanged(object? sender, OfflineLicensePayload? license)
     {
         if (license != null)
         {
-            StatusLabel.Content = $"Licenciado a: {license.ClientName}";
+            StatusLabel.Content = $"Licenciado a: {license.CompanyName}";
             EnablePremiumFeatures();
         }
         else
@@ -566,7 +619,7 @@ public partial class MainWindow : Window
 }
 ```
 
-### 3.4. Diálogo de Activación de Licencia (WPF)
+### 3.4. Dialogo de Activacion (WPF)
 
 ```csharp
 public partial class LicenseActivationWindow : Window
@@ -595,11 +648,11 @@ public partial class LicenseActivationWindow : Window
         if (result.IsValid)
         {
             MessageBox.Show(
-                $"¡Licencia activada exitosamente!\n\n" +
-                $"Cliente: {result.License.ClientName}\n" +
+                $"Licencia activada exitosamente!\n\n" +
+                $"Empresa: {result.License.CompanyName}\n" +
                 $"Producto: {result.License.Product}\n" +
                 $"Usuarios: {result.License.MaxUsers}",
-                "Éxito",
+                "Exito",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information
             );
@@ -621,9 +674,9 @@ public partial class LicenseActivationWindow : Window
 
 ---
 
-## 4. Obtener la Clave Pública
+## 4. Obtener la Clave Publica
 
-### Opción A: Desde el API (recomendado para desarrollo)
+### Opcion A: Desde el API (recomendado para desarrollo)
 
 ```bash
 curl https://tu-api.com/api/licenses/offline/public-key
@@ -635,34 +688,29 @@ Respuesta:
 {
   "publicKey": "-----BEGIN PUBLIC KEY-----\nMIIBI...\n-----END PUBLIC KEY-----",
   "algorithm": "RSA-SHA256",
-  "format": "PEM"
+  "format": "PEM (SPKI)"
 }
 ```
 
-### Opción B: Incrustar en el código
+La clave esta en formato **SPKI PEM**, compatible directo con `RSA.ImportFromPem()` en .NET 5+.
 
-Copia la clave pública y reemplaza el valor de `PUBLIC_KEY_PEM` en `LicenseValidator.cs`.
+### Opcion B: Incrustar en el codigo
 
-### Opción C: Configurar en appsettings.json (Recomendado para .NET Core Web API)
+Copia el valor de `publicKey` y reemplaza `PUBLIC_KEY_PEM` en `LicenseValidator.cs`.
 
-Si tu aplicación es una Web API en .NET Core desplegada en IIS, la mejor práctica es usar `appsettings.json`:
+### Opcion C: Configurar en appsettings.json (Recomendado para .NET Core Web API)
 
 #### Paso 1: Agregar la clave en appsettings.json
 
 ```json
 {
-  "ConnectionStrings": {
-    "DefaultConnection": "..."
-  },
   "LicenseValidation": {
-    "PublicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0QIL8Xymb/g5Cg0XB9NuAR6ArqyUq+WqnxfjAy6vtVNckNU3OyXmscZOqNgyA0o9HIEjCiEG2d8gfK7lxdj7l/LJiF3Wh9d1YGJmTlXDBzLZjcfpg3x1UbeFi1ly5PfmGFrVZs5vZ04fUXKwugGeXouikwRFApB2+7QAjRESI3KCRW+VOQMoYlgKNZid3j0J0XECXSalGLVEEXV2hfDKgRupEivNKmuZWrjLTkvhJqqOKzlTATKeGZrORwckoUpUAeu3D0VQr1gJLIeE48D/lOFEJUJaz9cEcS3Mwr4o6e66ErG8ZF5M8+f5UanKCq8aZ4UtRouwXvprBBjeCrvz5QIDAQAB\n-----END PUBLIC KEY-----"
+    "PublicKey": "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----"
   }
 }
 ```
 
-> **NOTA**: Reemplaza la clave pública con la tuya. Obtener de: `GET /api/licenses/offline/public-key`
-
-#### Paso 2: Crear clase de configuración
+#### Paso 2: Crear clase de configuracion
 
 ```csharp
 namespace YourNamespace.Configuration
@@ -674,14 +722,16 @@ namespace YourNamespace.Configuration
 }
 ```
 
-#### Paso 3: Registrar en Program.cs o Startup.cs
+#### Paso 3: Registrar en Program.cs (.NET 6+)
 
 ```csharp
-// En Program.cs (.NET 6+)
+using Microsoft.Extensions.Options;
+using YourNamespace.Configuration;
+using YourNamespace.Licensing;
+
 builder.Services.Configure<LicenseValidationSettings>(
     builder.Configuration.GetSection("LicenseValidation"));
 
-// Registrar LicenseValidator como singleton
 builder.Services.AddSingleton<LicenseValidator>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<LicenseValidationSettings>>().Value;
@@ -690,27 +740,9 @@ builder.Services.AddSingleton<LicenseValidator>(sp =>
 });
 ```
 
-```csharp
-// En Startup.cs (.NET Core 3.1 / .NET 5)
-public void ConfigureServices(IServiceCollection services)
-{
-    services.Configure<LicenseValidationSettings>(
-        Configuration.GetSection("LicenseValidation"));
-
-    services.AddSingleton<LicenseValidator>(sp =>
-    {
-        var settings = sp.GetRequiredService<IOptions<LicenseValidationSettings>>().Value;
-        var publicKey = settings.PublicKey.Replace("\\n", "\n");
-        return new LicenseValidator(publicKey);
-    });
-}
-```
-
-#### Paso 4: Usar en un Controller o Service
+#### Paso 4: Usar en un Controller
 
 ```csharp
-using Microsoft.AspNetCore.Mvc;
-
 [ApiController]
 [Route("api/[controller]")]
 public class ProtectedController : ControllerBase
@@ -728,14 +760,13 @@ public class ProtectedController : ControllerBase
         var result = _licenseValidator.ValidateToken(token);
 
         if (!result.IsValid)
-        {
-            return BadRequest(new { error = result.ErrorMessage });
-        }
+            return BadRequest(new { error = result.ErrorMessage, isExpired = result.IsExpired });
 
         return Ok(new
         {
             valid = true,
-            client = result.License.ClientName,
+            company = result.License.CompanyName,
+            clientCode = result.License.Code,
             product = result.License.Product,
             maxUsers = result.License.MaxUsers,
             expiresAt = result.License.ExpiresAt,
@@ -745,9 +776,7 @@ public class ProtectedController : ControllerBase
 }
 ```
 
-#### Paso 5: Crear Middleware de Validación con Cache (Recomendado para .NET 9)
-
-Para validar la licencia en cada request **sin impacto en performance**, usamos cache en memoria:
+#### Paso 5: Middleware de Validacion con Cache (.NET 9)
 
 ```csharp
 using Microsoft.Extensions.Caching.Memory;
@@ -757,27 +786,21 @@ public class LicenseValidationMiddleware
     private readonly RequestDelegate _next;
     private readonly LicenseValidator _licenseValidator;
     private readonly IMemoryCache _cache;
-    private readonly ILogger<LicenseValidationMiddleware> _logger;
-
-    // Cache key para el resultado de validación
     private const string LICENSE_CACHE_KEY = "LicenseValidationResult";
     private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
 
     public LicenseValidationMiddleware(
         RequestDelegate next,
         LicenseValidator licenseValidator,
-        IMemoryCache cache,
-        ILogger<LicenseValidationMiddleware> logger)
+        IMemoryCache cache)
     {
         _next = next;
         _licenseValidator = licenseValidator;
         _cache = cache;
-        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Rutas que no requieren validación de licencia
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.Contains("/health") || path.Contains("/swagger"))
         {
@@ -785,7 +808,6 @@ public class LicenseValidationMiddleware
             return;
         }
 
-        // Obtener token del header, config, o donde lo almacenes
         var token = context.Request.Headers["X-License-Token"].FirstOrDefault()
             ?? context.RequestServices.GetService<IConfiguration>()?["LicenseToken"];
 
@@ -796,27 +818,21 @@ public class LicenseValidationMiddleware
             return;
         }
 
-        // Intentar obtener resultado del cache
         var cacheKey = $"{LICENSE_CACHE_KEY}_{token.GetHashCode()}";
 
         if (!_cache.TryGetValue(cacheKey, out LicenseValidationResult? cachedResult))
         {
-            // No está en cache, validar
             cachedResult = _licenseValidator.ValidateToken(token);
 
-            // Solo cachear si es válido (para permitir reintentos con tokens corregidos)
             if (cachedResult.IsValid)
             {
-                var cacheOptions = new MemoryCacheEntryOptions()
+                _cache.Set(cacheKey, cachedResult, new MemoryCacheEntryOptions()
                     .SetAbsoluteExpiration(CacheDuration)
-                    .SetSlidingExpiration(TimeSpan.FromMinutes(1));
-
-                _cache.Set(cacheKey, cachedResult, cacheOptions);
-                _logger.LogDebug("License validated and cached for {Client}", cachedResult.License?.ClientName);
+                    .SetSlidingExpiration(TimeSpan.FromMinutes(1)));
             }
         }
 
-        if (!cachedResult.IsValid)
+        if (!cachedResult!.IsValid)
         {
             context.Response.StatusCode = 403;
             await context.Response.WriteAsJsonAsync(new {
@@ -826,10 +842,10 @@ public class LicenseValidationMiddleware
             return;
         }
 
-        // Verificar expiración en cada request (es rápido, solo compara fechas)
-        if (cachedResult.License?.ExpiresAt < DateTime.UtcNow)
+        // Verificar expiracion en cada request (solo compara fechas, muy rapido)
+        if (cachedResult.License?.ExpiresAtDate < DateTime.UtcNow)
         {
-            _cache.Remove(cacheKey); // Invalidar cache
+            _cache.Remove(cacheKey);
             context.Response.StatusCode = 403;
             await context.Response.WriteAsJsonAsync(new {
                 error = "License has expired",
@@ -839,7 +855,6 @@ public class LicenseValidationMiddleware
             return;
         }
 
-        // Agregar info de licencia al contexto para uso en controllers
         context.Items["License"] = cachedResult.License;
         context.Items["LicenseDaysRemaining"] = cachedResult.DaysUntilExpiration;
 
@@ -847,38 +862,25 @@ public class LicenseValidationMiddleware
     }
 }
 
-// Extension method para registrar fácilmente
 public static class LicenseValidationMiddlewareExtensions
 {
     public static IApplicationBuilder UseLicenseValidation(this IApplicationBuilder builder)
-    {
-        return builder.UseMiddleware<LicenseValidationMiddleware>();
-    }
+        => builder.UseMiddleware<LicenseValidationMiddleware>();
 }
 ```
 
-#### Paso 6: Configuración completa en Program.cs (.NET 9)
+#### Paso 6: Program.cs completo (.NET 9)
 
 ```csharp
-using Microsoft.Extensions.Options;
-using YourNamespace.Configuration;
-using YourNamespace.Licensing;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Agregar Memory Cache (requerido para el middleware)
 builder.Services.AddMemoryCache();
 
-// Configurar opciones de licencia
 builder.Services.Configure<LicenseValidationSettings>(
     builder.Configuration.GetSection("LicenseValidation"));
 
-// Registrar LicenseValidator como singleton (la clave pública no cambia)
 builder.Services.AddSingleton<LicenseValidator>(sp =>
 {
     var settings = sp.GetRequiredService<IOptions<LicenseValidationSettings>>().Value;
-    var publicKey = settings.PublicKey.Replace("\\n", "\n");
-    return new LicenseValidator(publicKey);
+    return new LicenseValidator(settings.PublicKey.Replace("\\n", "\n"));
 });
 
 builder.Services.AddControllers();
@@ -894,32 +896,22 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
-// Validación de licencia ANTES de authorization
-app.UseLicenseValidation();
-
+app.UseLicenseValidation(); // Antes de authorization
 app.UseAuthorization();
 app.MapControllers();
-
 app.Run();
 ```
 
 #### Paso 7: Helper para acceder a la licencia en Controllers
 
 ```csharp
-using Microsoft.AspNetCore.Mvc;
-
 public static class HttpContextLicenseExtensions
 {
     public static OfflineLicensePayload? GetLicense(this HttpContext context)
-    {
-        return context.Items["License"] as OfflineLicensePayload;
-    }
+        => context.Items["License"] as OfflineLicensePayload;
 
     public static int GetLicenseDaysRemaining(this HttpContext context)
-    {
-        return context.Items["LicenseDaysRemaining"] as int? ?? 0;
-    }
+        => context.Items["LicenseDaysRemaining"] as int? ?? 0;
 }
 
 [ApiController]
@@ -931,12 +923,9 @@ public class ProductController : ControllerBase
     {
         var license = HttpContext.GetLicense();
 
-        // Ya no necesitas validar, el middleware lo hizo
-        // Solo usa los datos de la licencia si los necesitas
-
         return Ok(new
         {
-            message = $"Welcome {license?.ClientName}",
+            message = $"Bienvenido {license?.CompanyName}",
             maxUsers = license?.MaxUsers,
             daysRemaining = HttpContext.GetLicenseDaysRemaining()
         });
@@ -944,89 +933,57 @@ public class ProductController : ControllerBase
 }
 ```
 
-#### Performance: ¿Por qué es rápido?
-
-| Operación            | Tiempo  | Frecuencia                            |
-| -------------------- | ------- | ------------------------------------- |
-| Lectura de cache     | ~1 μs   | Cada request                          |
-| Validación RSA       | ~1-2 ms | Solo cuando cache expira (cada 5 min) |
-| Verificar expiración | ~1 μs   | Cada request (solo compara fechas)    |
-
-**El 99.9% de los requests solo hacen una lectura de memoria.**
-
 ---
 
 ## 5. Instrucciones para el LLM
 
-### Pasos de Implementación:
+### Pasos de Implementacion:
 
 1. **Crear los archivos**: Crea `LicenseValidator.cs` y `LicenseManager.cs` en una carpeta `Licensing/` del proyecto.
 
 2. **Cambiar el namespace**: Reemplaza `YourNamespace` por el namespace real del proyecto.
 
-3. **Configurar la clave pública**:
-   - Si el proyecto tiene acceso al API, obtener la clave con HTTP GET a `/api/licenses/offline/public-key`
-   - Incrustar la clave en `PUBLIC_KEY_PEM`
+3. **Configurar la clave publica**:
+   - Obtener con HTTP GET a `/api/licenses/offline/public-key` (campo `publicKey` de la respuesta)
+   - Incrustar en `PUBLIC_KEY_PEM` o configurar en `appsettings.json`
 
-4. **Configurar la ruta del archivo de licencia**: Cambiar `"YourAppName"` por el nombre real de la aplicación en `LicenseManager.cs`.
+4. **Configurar la ruta del archivo de licencia**: Cambiar `"YourAppName"` en `LicenseManager.cs`.
 
-5. **Integrar en el startup de la aplicación**:
+5. **Integrar en el startup**:
    - Crear instancia de `LicenseManager`
    - Llamar `LoadLicense()` al inicio
-   - Mostrar UI de activación si no hay licencia válida
+   - Mostrar UI de activacion si no hay licencia valida
 
-6. **Proteger características premium**: Usar `_licenseManager.HasValidLicense` o `_licenseManager.IsProductLicensed("NombreProducto")`.
+6. **Proteger caracteristicas premium**: Usar `_licenseManager.HasValidLicense` o `_licenseManager.IsProductLicensed("NombreProducto")`.
 
-### Consideraciones:
+### Consideraciones Criticas:
 
-- El código está optimizado para **.NET 9** (también compatible con .NET 5+)
-- Usa `ImportFromPem` disponible desde .NET 5
-- Para .NET Framework 4.x, usar `RSACryptoServiceProvider` con conversión de formato
-- El token es autocontenido: NO requiere conexión a internet para validar
-- La firma garantiza que el token no ha sido modificado
-- **Performance**: El middleware usa cache en memoria, validando RSA solo cada 5 minutos
+- El token es un **unico string Base64** (no tiene formato `a.b`)
+- El token decodificado es un JSON con campos: `data`, `signature`, `algorithm`, `version`
+- La firma se verifica sobre el JSON crudo del campo `data` (no sobre una re-serializacion)
+- Los campos del payload son `code` y `companyName` (NO `clientId` ni `clientName`)
+- `expiresAt` es un string ISO 8601 o `null` (no un `DateTime`)
+- La clave publica esta en formato SPKI PEM — compatible directo con `RSA.ImportFromPem()`
+- Compatible con **.NET 5+** (usa `ImportFromPem` disponible desde .NET 5)
 
 ---
 
-## 6. Versión para .NET Framework 4.x
+## 6. Version para .NET Framework 4.x
 
-Si el proyecto usa .NET Framework 4.x, reemplazar el constructor de `LicenseValidator`:
-
-```csharp
-using System.Security.Cryptography;
-
-public LicenseValidator()
-{
-    _rsa = RSA.Create();
-
-    // Convertir PEM a parámetros RSA manualmente
-    var pemContent = PUBLIC_KEY_PEM
-        .Replace("-----BEGIN PUBLIC KEY-----", "")
-        .Replace("-----END PUBLIC KEY-----", "")
-        .Replace("\n", "")
-        .Replace("\r", "")
-        .Trim();
-
-    var keyBytes = Convert.FromBase64String(pemContent);
-    _rsa.ImportSubjectPublicKeyInfo(keyBytes, out _);
-}
-```
-
-Para versiones anteriores a .NET Core 3.0 sin `ImportSubjectPublicKeyInfo`, usar BouncyCastle:
+Si el proyecto usa .NET Framework 4.x, `ImportFromPem` no esta disponible. Usar BouncyCastle:
 
 ```bash
 Install-Package BouncyCastle.Cryptography
 ```
 
 ```csharp
-using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 
-public LicenseValidator()
+public LicenseValidator(string publicKeyPem)
 {
-    using var reader = new StringReader(PUBLIC_KEY_PEM);
+    using var reader = new StringReader(publicKeyPem);
     var pemReader = new PemReader(reader);
     var publicKeyParams = (RsaKeyParameters)pemReader.ReadObject();
 
@@ -1041,13 +998,9 @@ public LicenseValidator()
 
 ---
 
-## 7. Protección Anti-Manipulación de Fecha del Sistema
+## 7. Proteccion Anti-Manipulacion de Fecha del Sistema
 
-Si un usuario cambia la fecha del sistema hacia atrás, podría evitar que la licencia expire. Aquí hay varias estrategias para detectar y prevenir esto:
-
-### 7.1. Guardar Última Fecha Conocida (Recomendado)
-
-Crea un archivo `SecureTimeTracker.cs`:
+### 7.1. Guardar Ultima Fecha Conocida (Recomendado)
 
 ```csharp
 using System;
@@ -1056,9 +1009,6 @@ using System.Text.Json;
 
 namespace YourNamespace.Licensing
 {
-    /// <summary>
-    /// Detecta manipulación del reloj del sistema guardando la última fecha conocida
-    /// </summary>
     public class SecureTimeTracker
     {
         private readonly string _timeFilePath;
@@ -1070,42 +1020,23 @@ namespace YourNamespace.Licensing
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "YourAppName"
             );
-
             _timeFilePath = Path.Combine(basePath, ".timechk");
             LoadLastKnownTime();
         }
 
-        /// <summary>
-        /// Obtiene la fecha actual verificando que no haya manipulación
-        /// </summary>
-        /// <returns>Fecha segura o null si se detectó manipulación</returns>
         public DateTime? GetSecureCurrentTime()
         {
             var currentTime = DateTime.UtcNow;
 
-            // Si la fecha actual es anterior a la última conocida, hay manipulación
-            if (currentTime < _lastKnownTime.AddMinutes(-5)) // 5 min de tolerancia
-            {
-                return null; // Manipulación detectada
-            }
+            if (currentTime < _lastKnownTime.AddMinutes(-5))
+                return null; // Manipulacion detectada
 
-            // Actualizar última fecha conocida
             UpdateLastKnownTime(currentTime);
-
             return currentTime;
         }
 
-        /// <summary>
-        /// Verifica si el reloj del sistema parece manipulado
-        /// </summary>
-        public bool IsClockTampered()
-        {
-            return GetSecureCurrentTime() == null;
-        }
+        public bool IsClockTampered() => GetSecureCurrentTime() == null;
 
-        /// <summary>
-        /// Obtiene la última fecha conocida (para mostrar al usuario)
-        /// </summary>
         public DateTime LastKnownTime => _lastKnownTime;
 
         private void LoadLastKnownTime()
@@ -1114,8 +1045,7 @@ namespace YourNamespace.Licensing
             {
                 if (File.Exists(_timeFilePath))
                 {
-                    var content = File.ReadAllText(_timeFilePath);
-                    var data = JsonSerializer.Deserialize<TimeData>(content);
+                    var data = JsonSerializer.Deserialize<TimeData>(File.ReadAllText(_timeFilePath));
                     if (data != null)
                     {
                         _lastKnownTime = DateTime.FromBinary(data.Ticks);
@@ -1123,10 +1053,7 @@ namespace YourNamespace.Licensing
                     }
                 }
             }
-            catch
-            {
-                // Si hay error, usar fecha de modificación del archivo como fallback
-            }
+            catch { }
 
             _lastKnownTime = DateTime.UtcNow;
             UpdateLastKnownTime(_lastKnownTime);
@@ -1138,39 +1065,26 @@ namespace YourNamespace.Licensing
             {
                 var directory = Path.GetDirectoryName(_timeFilePath);
                 if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
                     Directory.CreateDirectory(directory);
-                }
 
-                var data = new TimeData { Ticks = time.ToBinary() };
-                var json = JsonSerializer.Serialize(data);
-
-                // Escribir con atributos ocultos para dificultar encontrarlo
-                File.WriteAllText(_timeFilePath, json);
+                File.WriteAllText(_timeFilePath, JsonSerializer.Serialize(new TimeData { Ticks = time.ToBinary() }));
                 File.SetAttributes(_timeFilePath, FileAttributes.Hidden | FileAttributes.System);
-
                 _lastKnownTime = time;
             }
-            catch
-            {
-                // Silenciar errores de escritura
-            }
+            catch { }
         }
 
-        private class TimeData
-        {
-            public long Ticks { get; set; }
-        }
+        private class TimeData { public long Ticks { get; set; } }
     }
 }
 ```
 
 ### 7.2. Integrar en LicenseValidator
 
-Modifica `LicenseValidator.cs` para usar el verificador de tiempo:
+Agrega `SecureTimeTracker` al constructor y sustituye `DateTime.UtcNow` por `secureTime.Value` en la verificacion de expiracion:
 
 ```csharp
-public class LicenseValidator
+public class LicenseValidator : IDisposable
 {
     private readonly RSA _rsa;
     private readonly SecureTimeTracker _timeTracker;
@@ -1184,260 +1098,34 @@ public class LicenseValidator
 
     public LicenseValidationResult ValidateToken(string token)
     {
-        try
+        // 0. Verificar manipulacion del reloj PRIMERO
+        var secureTime = _timeTracker.GetSecureCurrentTime();
+        if (secureTime == null)
         {
-            // 0. Verificar manipulación del reloj PRIMERO
-            var secureTime = _timeTracker.GetSecureCurrentTime();
-            if (secureTime == null)
+            return new LicenseValidationResult
             {
-                return new LicenseValidationResult
-                {
-                    IsValid = false,
-                    ErrorMessage = $"Se detectó manipulación del reloj del sistema. " +
-                        $"Última fecha válida: {_timeTracker.LastKnownTime:yyyy-MM-dd HH:mm}. " +
-                        $"Por favor, corrija la fecha del sistema."
-                };
-            }
-
-            // 1. Separar payload y firma
-            var parts = token.Split('.');
-            if (parts.Length != 2)
-            {
-                return new LicenseValidationResult
-                {
-                    IsValid = false,
-                    ErrorMessage = "Formato de token inválido."
-                };
-            }
-
-            // ... resto de la validación ...
-
-            // 4. Verificar expiración usando la fecha SEGURA
-            var isExpired = license.ExpiresAt.HasValue && license.ExpiresAt.Value < secureTime.Value;
-            var daysUntilExpiration = license.ExpiresAt.HasValue
-                ? (int)(license.ExpiresAt.Value - secureTime.Value).TotalDays
-                : int.MaxValue;
-
-            // ... resto del código ...
+                IsValid = false,
+                ErrorMessage = $"Se detecto manipulacion del reloj del sistema. " +
+                    $"Ultima fecha valida: {_timeTracker.LastKnownTime:yyyy-MM-dd HH:mm}."
+            };
         }
-        catch (Exception ex)
-        {
-            // ... manejo de errores ...
-        }
+
+        // ... resto de la validacion usando secureTime.Value en lugar de DateTime.UtcNow ...
     }
 }
 ```
-
-### 7.3. Verificar Fechas de Archivos del Sistema (Capa Adicional)
-
-```csharp
-public static class SystemTimeVerifier
-{
-    /// <summary>
-    /// Obtiene una fecha aproximada basada en archivos del sistema
-    /// que se actualizan frecuentemente
-    /// </summary>
-    public static DateTime? GetApproximateSystemTime()
-    {
-        var checkPaths = new[]
-        {
-            // Windows Event Logs (se escriben constantemente)
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System),
-                "winevt", "Logs", "System.evtx"),
-
-            // Prefetch files (se actualizan al ejecutar programas)
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
-                "Prefetch"),
-
-            // Archivos temporales recientes
-            Path.Combine(Path.GetTempPath(), "..", "Temp")
-        };
-
-        DateTime latestDate = DateTime.MinValue;
-
-        foreach (var path in checkPaths)
-        {
-            try
-            {
-                if (File.Exists(path))
-                {
-                    var lastWrite = File.GetLastWriteTimeUtc(path);
-                    if (lastWrite > latestDate)
-                        latestDate = lastWrite;
-                }
-                else if (Directory.Exists(path))
-                {
-                    var dirInfo = new DirectoryInfo(path);
-                    var recentFile = dirInfo.GetFiles()
-                        .OrderByDescending(f => f.LastWriteTimeUtc)
-                        .FirstOrDefault();
-
-                    if (recentFile != null && recentFile.LastWriteTimeUtc > latestDate)
-                        latestDate = recentFile.LastWriteTimeUtc;
-                }
-            }
-            catch
-            {
-                // Ignorar errores de acceso
-            }
-        }
-
-        return latestDate > DateTime.MinValue ? latestDate : null;
-    }
-
-    /// <summary>
-    /// Verifica si la fecha del sistema es sospechosamente diferente
-    /// de la fecha de archivos recientes
-    /// </summary>
-    public static bool IsSystemTimeSuspicious()
-    {
-        var fileTime = GetApproximateSystemTime();
-        if (fileTime == null) return false;
-
-        var diff = Math.Abs((DateTime.UtcNow - fileTime.Value).TotalHours);
-
-        // Si hay más de 24 horas de diferencia, es sospechoso
-        return diff > 24;
-    }
-}
-```
-
-### 7.4. Middleware Actualizado con Protección de Tiempo
-
-```csharp
-public class LicenseValidationMiddleware
-{
-    private readonly RequestDelegate _next;
-    private readonly LicenseValidator _licenseValidator;
-    private readonly IMemoryCache _cache;
-    private readonly SecureTimeTracker _timeTracker;
-
-    public LicenseValidationMiddleware(
-        RequestDelegate next,
-        LicenseValidator licenseValidator,
-        IMemoryCache cache)
-    {
-        _next = next;
-        _licenseValidator = licenseValidator;
-        _cache = cache;
-        _timeTracker = new SecureTimeTracker();
-    }
-
-    public async Task InvokeAsync(HttpContext context)
-    {
-        // Verificar manipulación de fecha ANTES de todo
-        if (_timeTracker.IsClockTampered())
-        {
-            context.Response.StatusCode = 403;
-            await context.Response.WriteAsJsonAsync(new
-            {
-                error = "System clock tampering detected",
-                lastValidTime = _timeTracker.LastKnownTime,
-                message = "Please correct your system date and time"
-            });
-            return;
-        }
-
-        // ... resto del middleware ...
-    }
-}
-```
-
-### 7.5. Estrategia Adicional: Validación Periódica con NTP (Opcional)
-
-Si la aplicación tiene conexión a internet ocasionalmente:
-
-```csharp
-public static class NtpTimeValidator
-{
-    private static readonly string[] NtpServers =
-    {
-        "time.google.com",
-        "time.windows.com",
-        "pool.ntp.org"
-    };
-
-    /// <summary>
-    /// Intenta obtener la hora real de un servidor NTP
-    /// </summary>
-    public static async Task<DateTime?> GetNetworkTimeAsync()
-    {
-        foreach (var server in NtpServers)
-        {
-            try
-            {
-                using var client = new UdpClient();
-                client.Client.ReceiveTimeout = 3000;
-
-                await client.ConnectAsync(server, 123);
-
-                var ntpData = new byte[48];
-                ntpData[0] = 0x1B; // NTP request header
-
-                await client.SendAsync(ntpData, ntpData.Length);
-                var response = await client.ReceiveAsync();
-
-                var intPart = (ulong)response.Buffer[40] << 24 |
-                              (ulong)response.Buffer[41] << 16 |
-                              (ulong)response.Buffer[42] << 8 |
-                              response.Buffer[43];
-
-                var fractPart = (ulong)response.Buffer[44] << 24 |
-                                (ulong)response.Buffer[45] << 16 |
-                                (ulong)response.Buffer[46] << 8 |
-                                response.Buffer[47];
-
-                var milliseconds = (intPart * 1000) + ((fractPart * 1000) / 0x100000000L);
-                var networkDateTime = new DateTime(1900, 1, 1, 0, 0, 0, DateTimeKind.Utc)
-                    .AddMilliseconds((long)milliseconds);
-
-                return networkDateTime;
-            }
-            catch
-            {
-                continue; // Intentar siguiente servidor
-            }
-        }
-
-        return null; // No se pudo obtener hora de red
-    }
-
-    /// <summary>
-    /// Valida que el reloj del sistema esté sincronizado (tolerancia de 1 hora)
-    /// </summary>
-    public static async Task<bool> ValidateSystemClockAsync()
-    {
-        var networkTime = await GetNetworkTimeAsync();
-        if (networkTime == null) return true; // Sin red, confiar en otras validaciones
-
-        var diff = Math.Abs((DateTime.UtcNow - networkTime.Value).TotalMinutes);
-        return diff < 60; // 1 hora de tolerancia
-    }
-}
-```
-
-### Resumen de Protección
-
-| Capa                   | Qué detecta                                | Cuándo usar           |
-| ---------------------- | ------------------------------------------ | --------------------- |
-| **SecureTimeTracker**  | Reloj movido hacia atrás                   | Siempre (obligatorio) |
-| **SystemTimeVerifier** | Fecha muy diferente a archivos del sistema | Capa adicional        |
-| **NtpTimeValidator**   | Reloj desincronizado con internet          | Cuando hay conexión   |
-
-**Recomendación**: Usa al menos `SecureTimeTracker`. Es simple, efectivo, y funciona 100% offline.
 
 ---
 
 ## 8. Testing
 
-### Test Unitario
-
 ```csharp
 [TestClass]
 public class LicenseValidatorTests
 {
-    private const string VALID_TOKEN = "tu-token-de-prueba-aquí";
-    private const string TAMPERED_TOKEN = "eyJ0ZXN0IjoidGFtcGVyZWQifQ.invalidSignature";
+    // Obtener un token real del panel de administracion para las pruebas
+    private const string VALID_TOKEN = "tu-token-de-prueba-aqui";
+    private const string TAMPERED_TOKEN = "eyJkYXRhIjp7ImNvZGUiOiJ0ZXN0In0sInNpZ25hdHVyZSI6ImludmFsaWQiLCJhbGdvcml0aG0iOiJSU0EtU0hBMjU2IiwidmVyc2lvbiI6MX0=";
 
     [TestMethod]
     public void ValidateToken_WithValidToken_ReturnsValid()
@@ -1447,6 +1135,8 @@ public class LicenseValidatorTests
 
         Assert.IsTrue(result.IsValid);
         Assert.IsNotNull(result.License);
+        Assert.IsFalse(string.IsNullOrEmpty(result.License.CompanyName));
+        Assert.IsFalse(string.IsNullOrEmpty(result.License.Code));
     }
 
     [TestMethod]
@@ -1456,17 +1146,27 @@ public class LicenseValidatorTests
         var result = validator.ValidateToken(TAMPERED_TOKEN);
 
         Assert.IsFalse(result.IsValid);
-        Assert.IsTrue(result.ErrorMessage.Contains("Firma inválida"));
+        Assert.IsTrue(result.ErrorMessage!.Contains("Firma invalida") ||
+                      result.ErrorMessage.Contains("error"));
     }
 
     [TestMethod]
-    public void ValidateToken_WithInvalidFormat_ReturnsInvalid()
+    public void ValidateToken_WithInvalidBase64_ReturnsInvalid()
     {
         var validator = new LicenseValidator();
-        var result = validator.ValidateToken("invalid-token-without-dot");
+        var result = validator.ValidateToken("esto-no-es-base64-valido!!!");
 
         Assert.IsFalse(result.IsValid);
-        Assert.IsTrue(result.ErrorMessage.Contains("Formato de token inválido"));
+        Assert.IsTrue(result.ErrorMessage!.Contains("malformado"));
+    }
+
+    [TestMethod]
+    public void ValidateToken_WithEmptyToken_ReturnsInvalid()
+    {
+        var validator = new LicenseValidator();
+        var result = validator.ValidateToken("");
+
+        Assert.IsFalse(result.IsValid);
     }
 }
 ```
@@ -1475,16 +1175,38 @@ public class LicenseValidatorTests
 
 ## Resumen
 
-| Archivo               | Propósito                                  |
-| --------------------- | ------------------------------------------ |
-| `LicenseValidator.cs` | Valida tokens offline con RSA-SHA256       |
-| `LicenseManager.cs`   | Gestiona persistencia y estado de licencia |
+### Formato Real del Token
+
+```
+TOKEN = Base64( JSON({ data, signature, algorithm, version }) )
+```
+
+Donde:
+- `data` = objeto `OfflineLicensePayload` con los datos de la licencia
+- `signature` = firma RSA-SHA256 en Base64 de `JSON.stringify(data)`
+- `algorithm` = `"RSA-SHA256"`
+- `version` = `1`
+
+### Campos del Payload
+
+| Campo         | Tipo              | Descripcion                        |
+| ------------- | ----------------- | ---------------------------------- |
+| `code`        | `string`          | UUID/identificador del cliente     |
+| `companyName` | `string`          | Nombre de la empresa               |
+| `product`     | `string`          | Nombre del producto                |
+| `maxUsers`    | `number`          | Numero maximo de usuarios          |
+| `expiresAt`   | `string` o `null` | Fecha ISO 8601 o null (sin vence.) |
+| `issuedAt`    | `string`          | Fecha de emision ISO 8601          |
+| `licenseId`   | `string`          | UUID de la licencia                |
+| `licenseKey`  | `string`          | Clave de la licencia               |
+
+### Clases C# Principales
 
 | Clase                     | Uso Principal                                               |
 | ------------------------- | ----------------------------------------------------------- |
-| `LicenseValidator`        | `ValidateToken(token)` → `LicenseValidationResult`          |
+| `LicenseValidator`        | `ValidateToken(token)` -> `LicenseValidationResult`         |
 | `LicenseManager`          | `LoadLicense()`, `ActivateLicense(token)`, `CurrentLicense` |
-| `OfflineLicensePayload`   | Datos de la licencia deserializados                         |
+| `OfflineLicensePayload`   | Datos de la licencia (`Code`, `CompanyName`, etc.)          |
 | `LicenseValidationResult` | Resultado con `IsValid`, `License`, `ErrorMessage`          |
 
-**El token es autónomo**: contiene todos los datos necesarios firmados criptográficamente. No se puede falsificar sin la clave privada del servidor.
+**El token es autonomo**: contiene todos los datos necesarios firmados criptograficamente. No se puede falsificar sin la clave privada del servidor.

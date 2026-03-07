@@ -55,3 +55,36 @@ export class ChangePasswordDto {
 export interface ChangePasswordResponseDto {
   message: string;
 }
+
+/**
+ * DTO for requesting a password reset
+ */
+export class ForgotPasswordDto {
+  @ApiProperty({ description: 'User email', example: 'user@example.com', type: String })
+  email!: string;
+}
+
+/**
+ * Response for forgot password request
+ */
+export interface ForgotPasswordResponseDto {
+  message: string;
+}
+
+/**
+ * DTO for resetting password with a token
+ */
+export class ResetPasswordDto {
+  @ApiProperty({ description: 'Password reset token', type: String })
+  token!: string;
+
+  @ApiProperty({ description: 'New password', minLength: 6, type: String })
+  newPassword!: string;
+}
+
+/**
+ * Response for reset password
+ */
+export interface ResetPasswordResponseDto {
+  message: string;
+}
