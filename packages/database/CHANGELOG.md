@@ -1,3 +1,11 @@
+## [@licensebox/database-v1.1.0](https://github.com/raulgcode/licensebox/compare/database-v1.0.0...database-v1.1.0) (2026-03-07)
+
+### ✨ Features
+
+* **api:** add offline license generation and verification ([8e16fe2](https://github.com/raulgcode/licensebox/commit/8e16fe21f8121d6c3bda170689cc0e9f0e83fb4d))
+* **audit:** implement audit logging system ([0e7bc67](https://github.com/raulgcode/licensebox/commit/0e7bc67c844e4ea564e00673863d58ef933af881))
+* **auth:** add forgot and reset password functionality ([0bfcedf](https://github.com/raulgcode/licensebox/commit/0bfcedf11d66b720deb56a2bc5df6a42ba017e4d))
+
 ## @licensebox/database-v1.0.0 (2026-02-03)
 
 ### ✨ Features
