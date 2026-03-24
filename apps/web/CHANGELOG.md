@@ -1,3 +1,9 @@
+## [web-v1.3.0](https://github.com/raulgcode/licensebox/compare/web-v1.2.0...web-v1.3.0) (2026-03-24)
+
+### ✨ Features
+
+* **notifications:** add notifications log page with filtering and detail view ([516de2a](https://github.com/raulgcode/licensebox/commit/516de2ac445bf535f51c26997a89af549a9db7b6))
+
 ## [web-v1.2.0](https://github.com/raulgcode/licensebox/compare/web-v1.1.0...web-v1.2.0) (2026-03-24)
 
 ### ✨ Features
