@@ -1,3 +1,11 @@
+## [api-v1.5.0](https://github.com/raulgcode/licensebox/compare/api-v1.4.1...api-v1.5.0) (2026-03-24)
+
+### ✨ Features
+
+* add machineId to offline license payload and update related API responses ([c6fccd9](https://github.com/raulgcode/licensebox/commit/c6fccd948e4a2ae2bb609c0666671279cff2ba60))
+* **audit:** implement audit logging system ([0e7bc67](https://github.com/raulgcode/licensebox/commit/0e7bc67c844e4ea564e00673863d58ef933af881))
+* **notification:** implement license expiration notification system with logging ([0ec19ca](https://github.com/raulgcode/licensebox/commit/0ec19ca0a5065eb6c6a96f14eaa99e932bd8dc99))
+
 ## [api-v1.4.1](https://github.com/raulgcode/licensebox/compare/api-v1.4.0...api-v1.4.1) (2026-03-07)
 
 ### ♻️ Code Refactoring
