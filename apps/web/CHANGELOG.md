@@ -1,3 +1,14 @@
+## [web-v1.2.0](https://github.com/raulgcode/licensebox/compare/web-v1.1.0...web-v1.2.0) (2026-03-24)
+
+### ✨ Features
+
+* **audit:** implement audit logging system ([0e7bc67](https://github.com/raulgcode/licensebox/commit/0e7bc67c844e4ea564e00673863d58ef933af881))
+
+### 🐛 Bug Fixes
+
+* update lastResult handling in NewClientPage for correct form submission state ([5a784ae](https://github.com/raulgcode/licensebox/commit/5a784ae9d660746755624a3a0934aa556b89e033))
+* **web:** update date input type for expiration fields to improve user experience ([8bea4f8](https://github.com/raulgcode/licensebox/commit/8bea4f8ba1c8939f1ff228fc01f910be249b1a80))
+
 ## [web-v1.1.0](https://github.com/raulgcode/licensebox/compare/web-v1.0.0...web-v1.1.0) (2026-03-07)
 
 ### ✨ Features
