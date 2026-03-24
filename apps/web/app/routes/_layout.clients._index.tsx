@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs, ActionFunctionArgs } from 'react-router';
-import { data, useLoaderData, useNavigate, Form, Link } from 'react-router';
+import { data, useLoaderData, useActionData, useNavigate, Form, Link } from 'react-router';
 import { createAuthenticatedApi } from '@/lib/api';
 import type { ClientWithLicensesDto } from '@licensebox/shared';
 import { isAxiosError } from 'axios';
@@ -42,10 +42,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function ClientsPage() {
   const { clients } = useLoaderData<typeof loader>();
+  const actionData = useActionData<typeof action>();
   const navigate = useNavigate();
 
   return (
     <div className="p-6 md:p-8 max-w-7xl mx-auto">
+      {/* Action Error/Success Banner */}
+      {actionData && 'error' in actionData && actionData.error && (
+        <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/50 dark:text-red-400">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" x2="12" y1="8" y2="12" />
+            <line x1="12" x2="12.01" y1="16" y2="16" />
+          </svg>
+          {actionData.error}
+        </div>
+      )}
+
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
