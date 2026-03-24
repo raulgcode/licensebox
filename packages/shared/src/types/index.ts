@@ -40,3 +40,6 @@ export * from './client.types';
 
 // Export audit types
 export * from './audit.types';
+
+// Export notification types
+export * from './notification.types';

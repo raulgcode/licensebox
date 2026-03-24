@@ -16,6 +16,7 @@
     "typecheck": "turbo run typecheck",
     "db:studio": "pnpm --filter database db:studio",
     "db:migrate": "pnpm --filter database db:migrate",
+    "db:seed": "pnpm --filter database db:seed",
     "db:migrate:create": "pnpm --filter database db:migrate:create",
     "db:generate": "pnpm --filter database db:generate"
   },

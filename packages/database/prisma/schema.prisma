@@ -26,14 +26,15 @@ model User {
 
 // Client model
 model Client {
-  id          String    @id @default(uuid())
-  name        String
-  description String?
-  secret      String    @unique @default(uuid()) // Secret key for API authentication
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  licenses    License[]
+  id           String    @id @default(uuid())
+  name         String
+  description  String?
+  contactEmail String?
+  secret       String    @unique @default(uuid()) // Secret key for API authentication
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  licenses     License[]
 
   @@map("clients")
 }
@@ -70,18 +71,36 @@ model AuditLog {
 
 // License model
 model License {
-  id           String    @id @default(uuid())
-  key          String    @unique
-  product      String
-  clientId     String
-  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  machineId    String? // Optional machine identifier for license binding
-  maxUsers     Int       @default(1) // Maximum number of users allowed for this license
-  expiresAt    DateTime?
-  isActive     Boolean   @default(true)
-  offlineToken String?   @db.Text // Self-contained license token for offline validation
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id               String            @id @default(uuid())
+  key              String            @unique
+  product          String
+  clientId         String
+  client           Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  machineId        String? // Optional machine identifier for license binding
+  maxUsers         Int               @default(1) // Maximum number of users allowed for this license
+  expiresAt        DateTime?
+  isActive         Boolean           @default(true)
+  offlineToken     String?           @db.Text // Self-contained license token for offline validation
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  notificationLogs NotificationLog[]
 
   @@map("licenses")
+}
+
+// Notification log model
+model NotificationLog {
+  id               String   @id @default(uuid())
+  licenseId        String
+  license          License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  recipientEmail   String
+  daysBeforeExpiry Int
+  sentAt           DateTime @default(now())
+  status           String   @default("SENT") // SENT | FAILED
+  errorMessage     String?
+
+  @@unique([licenseId, recipientEmail, daysBeforeExpiry])
+  @@index([licenseId])
+  @@index([sentAt])
+  @@map("notification_logs")
 }

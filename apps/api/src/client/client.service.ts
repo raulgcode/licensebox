@@ -138,6 +138,7 @@ export class ClientService {
       data: {
         name: data.name,
         description: data.description,
+        contactEmail: data.contactEmail,
         isActive: data.isActive ?? true,
         secret,
       },
@@ -172,12 +173,13 @@ export class ClientService {
       data: {
         name: data.name,
         description: data.description,
+        contactEmail: data.contactEmail,
         isActive: data.isActive,
       },
     });
 
     // Compute diff and emit audit event (fire-and-forget)
-    const trackedFields = ['name', 'description', 'isActive'] as const;
+    const trackedFields = ['name', 'description', 'contactEmail', 'isActive'] as const;
     const changes: Record<string, { previous: unknown; updated: unknown }> = {};
     for (const field of trackedFields) {
       if (data[field] !== undefined && data[field] !== existingClient[field]) {

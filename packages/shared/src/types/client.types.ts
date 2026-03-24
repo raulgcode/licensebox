@@ -5,6 +5,7 @@ export interface ClientDto {
   id: string;
   name: string;
   description: string | null;
+  contactEmail: string | null;
   secret: string; // Secret key for API authentication
   isActive: boolean;
   createdAt: Date;
@@ -38,6 +39,13 @@ export class CreateClientDto {
   description?: string;
 
   @ApiPropertyOptional({
+    description: 'Contact email for license expiration notifications',
+    example: 'contact@acme.com',
+    type: String,
+  })
+  contactEmail?: string;
+
+  @ApiPropertyOptional({
     description: 'Whether the client is active',
     default: true,
     type: Boolean,
@@ -51,6 +59,13 @@ export class UpdateClientDto {
 
   @ApiPropertyOptional({ description: 'Client description', type: String, nullable: true })
   description?: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Contact email for license expiration notifications',
+    type: String,
+    nullable: true,
+  })
+  contactEmail?: string | null;
 
   @ApiPropertyOptional({ description: 'Whether the client is active', type: Boolean })
   isActive?: boolean;

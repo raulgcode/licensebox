@@ -15,6 +15,7 @@ import { AuthModule } from './auth/auth.module';
 import { LicenseModule } from './license/license.module';
 import { ClientModule } from './client/client.module';
 import { AuditModule } from './audit/audit.module';
+import { NotificationModule } from './notification/notification.module';
 import { join } from 'path';
 import { existsSync } from 'fs';
 
@@ -58,6 +59,7 @@ const envFilePath = existsSync(rootEnvPath) ? rootEnvPath : undefined;
     LicenseModule,
     ClientModule,
     AuditModule,
+    NotificationModule,
   ],
   controllers: [AppController, UsersController],
   providers: [

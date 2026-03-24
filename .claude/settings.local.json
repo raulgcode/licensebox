@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -r \"email\\\\|Email\\\\|contact\\\\|Contact\" /c/Users/XSF/source/repos/licensebox/packages --include=*.ts)",
+      "Bash(xargs cat:*)",
+      "Bash(xargs grep:*)"
+    ]
+  }
+}

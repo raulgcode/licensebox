@@ -1,0 +1,25 @@
+name: License Expiration Notifications
+
+on:
+  schedule:
+    # Runs daily at 14:00 UTC (8:00 AM CST / UTC-6)
+    - cron: '0 14 * * *'
+  workflow_dispatch: {} # Allows manual trigger from GitHub UI
+
+jobs:
+  trigger-notifications:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger notification check
+        run: |
+          response=$(curl -sf -o /dev/null -w "%{http_code}" -X POST \
+            "${{ secrets.API_URL }}/notifications/trigger" \
+            -H "x-notification-secret: ${{ secrets.NOTIFICATION_SECRET }}" \
+            -H "Content-Type: application/json")
+
+          if [ "$response" -ne 200 ]; then
+            echo "Notification trigger failed with status code: $response"
+            exit 1
+          fi
+
+          echo "Notification check triggered successfully"
