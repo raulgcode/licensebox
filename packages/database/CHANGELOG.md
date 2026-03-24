@@ -1,3 +1,9 @@
+## [@licensebox/database-v1.2.0](https://github.com/raulgcode/licensebox/compare/database-v1.1.0...database-v1.2.0) (2026-03-24)
+
+### ✨ Features
+
+* **notification:** implement license expiration notification system with logging ([0ec19ca](https://github.com/raulgcode/licensebox/commit/0ec19ca0a5065eb6c6a96f14eaa99e932bd8dc99))
+
 ## [@licensebox/database-v1.1.0](https://github.com/raulgcode/licensebox/compare/database-v1.0.0...database-v1.1.0) (2026-03-07)
 
 ### ✨ Features
