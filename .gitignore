@@ -62,3 +62,5 @@ postgres_data
 *.pem
 license-private.pem
 license-public.pem
+# Database dumps from scripts/fly-migrate-postgres.sh
+backups/
