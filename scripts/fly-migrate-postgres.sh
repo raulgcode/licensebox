@@ -28,7 +28,7 @@ DB_NAME="${DB_NAME:-licensebox_db}"
 # Must match (or be newer than) the MPG major version, since pg_dump runs from this image.
 PG_IMAGE="${PG_IMAGE:-flyio/postgres-flex:16}"
 DUMP="/data/mpg-backup.dump"
-TABLES='"User" "Client" "PasswordResetToken" "AuditLog" "License" "NotificationLog" "_prisma_migrations"'
+TABLES='users clients password_reset_tokens audit_logs licenses notification_logs _prisma_migrations'
 
 die() { echo "error: $*" >&2; exit 1; }
 
